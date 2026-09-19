@@ -1662,7 +1662,11 @@ function agruparPorMes(dadosPlanos){
       if(es&&es.os){
         MONTHS.forEach(function(m){
           if(!out[m]._entregasStatus)out[m]._entregasStatus={};
-          out[m]._entregasStatus[osBase(es.os)]=es;
+          // GUARDA: o registro plano (porta antiga) NUNCA sobrescreve o indice rico
+          // vindo das linhas completas de Entregas — senao a previsao/situacao some.
+          var _bOS=osBase(es.os);
+          var _jaTem=out[m]._entregasStatus[_bOS];
+          if(!_jaTem||!_jaTem.situacao)out[m]._entregasStatus[_bOS]=es;
         });
       }
     });
