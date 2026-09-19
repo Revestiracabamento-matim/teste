@@ -348,6 +348,15 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
       <div class="metric metric-top"><div class="metric-lbl">Valor a entregar</div><div class="metric-val" id="ep-valor">R$ 0</div></div>
       <div class="metric metric-top"><div class="metric-lbl">Retiradas na loja</div><div class="metric-val" id="ep-ret">0</div></div>
       <div class="metric metric-top"><div class="metric-lbl">Em entrega parcial</div><div class="metric-val" style="color:var(--warn)" id="ep-parcial">0</div></div>
+      <div class="metric metric-top"><div class="metric-lbl">Agendadas (a caminho)</div><div class="metric-val" style="color:var(--teal)" id="ep-agend">0</div></div>
+    </div>
+    <div class="card" id="epAgendCard" style="display:none">
+      <div class="card-hd"><h3 class="card-title">🗓️ Vendas com entrega agendada (ainda não saiu)</h3></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>O.S.</th><th>Cliente</th><th>Vendedor</th><th>Motorista</th><th>Previsão</th></tr></thead>
+        <tbody id="tbEntAgend"></tbody>
+      </table></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">Assim que o motorista sair para a entrega, ela some daqui e entra em "Em entrega parcial" só se ficar pendência.</div>
     </div>
     <div class="card" id="epParcialCard" style="display:none">
       <div class="card-hd"><h3 class="card-title">⚠️ Vendas em entrega parcial (pendência aberta no app)</h3></div>
@@ -2375,6 +2384,12 @@ function renderEntregasPendentes(){
   var cardP=document.getElementById('epParcialCard');var tbP=document.getElementById('tbEntParcial');
   if(cardP&&tbP){cardP.style.display=parc.length?'':'none';
     tbP.innerHTML=parc.map(function(v){var i=infoEntregaPorOS(v.os);return '<tr><td><code>'+(v.os||'-')+'</code></td><td><strong>'+(v.cliente||'-')+'</strong></td><td>'+(v.vendedor||'-')+'</td><td>'+(i.dataEntrega?fmtDataBR(i.dataEntrega):'—')+'</td><td>'+i.viagens+(i.abertas?' <span style="color:var(--muted)">('+i.abertas+' a fazer)</span>':'')+'</td><td>'+(i.pendItens||'—')+'</td></tr>';}).join('');}
+  // v28 — vendas com entrega ja agendada mas ainda nao saiu (data prevista)
+  var _vistosAg={};var agnd=(S.vendas||[]).filter(function(v){if(!v||!v.os)return false;var b=osBase(v.os);if(_vistosAg[b])return false;_vistosAg[b]=true;return infoEntregaPorOS(v.os).situacao==='agendada';});
+  var elAg=document.getElementById('ep-agend');if(elAg)elAg.textContent=agnd.length;
+  var cardAg=document.getElementById('epAgendCard');var tbAg=document.getElementById('tbEntAgend');
+  if(cardAg&&tbAg){cardAg.style.display=agnd.length?'':'none';
+    tbAg.innerHTML=agnd.map(function(v){var i=infoEntregaPorOS(v.os);var r=(S._entregasStatus||{})[osBase(v.os)];return '<tr><td><code>'+(v.os||'-')+'</code></td><td><strong>'+(v.cliente||'-')+'</strong></td><td>'+(v.vendedor||'-')+'</td><td>'+((r&&r.motorista)||'—')+'</td><td>'+(i.dataPrevista?fmtDataBR(i.dataPrevista):'a agendar')+'</td></tr>';}).join('');}
   var filtro=((document.getElementById('epFilter')||{}).value||'').toLowerCase();
   function casa(v){var alvo=((v.cliente||'')+' '+(v.os||'')+' '+(v.endereco||'')).toLowerCase();return alvo.indexOf(filtro)>=0;}
   var tb=document.getElementById('tbEntPend');if(!tb)return;
@@ -3096,10 +3111,11 @@ function indexarEntregasPorOS(lista){
   lista.forEach(function(e){
     if(!e||!e.os||String(e.id)==='CFG_ENTREGA')return;
     var b=osBase(e.os);
-    if(!idx[b])idx[b]={os:e.os,status:'',dataEntrega:'',dataConclusao:'',situacao:'sem_entrega',viagens:0,abertas:0,pendItens:'',temExt:true};
+    if(!idx[b])idx[b]={os:e.os,status:'',dataEntrega:'',dataConclusao:'',dataPrevista:'',motorista:'',situacao:'sem_entrega',viagens:0,abertas:0,pendItens:'',temExt:true};
     var r=idx[b];var x=_extEntrega(e);var fin=_ehFinalizada(e);
     r.viagens++;
-    if(!fin){r.abertas++;return;}
+    if(e.motorista)r.motorista=e.motorista;
+    if(!fin){r.abertas++;var dp=_diaDe(e.dataAgendada);if(dp&&(!r.dataPrevista||dp<r.dataPrevista))r.dataPrevista=dp;return;}
     var de=_diaDe(e.dataEntrega);
     if(de&&(!r.dataEntrega||de<r.dataEntrega))r.dataEntrega=de;
     var res=String(e.ocorrenciaTipo||'');
@@ -3117,11 +3133,11 @@ function indexarEntregasPorOS(lista){
 }
 function infoEntregaPorOS(os){
   var r=(S._entregasStatus||{})[osBase(os)];
-  if(!r)return {situacao:'sem_entrega',dataEntrega:'',dataConclusao:'',viagens:0,pendItens:''};
+  if(!r)return {situacao:'sem_entrega',dataEntrega:'',dataConclusao:'',dataPrevista:'',viagens:0,pendItens:''};
   if(r.situacao)return r;
   // registro plano da porta (vendedor): só {os,status,dataEntrega} — sem ext: conclusão = data da entrega
   var de=_diaDe(r.dataEntrega);
-  return {situacao:de?'concluida':'sem_entrega',dataEntrega:de,dataConclusao:de,viagens:de?1:0,pendItens:''};
+  return {situacao:de?'concluida':'sem_entrega',dataEntrega:de,dataConclusao:de,dataPrevista:'',viagens:de?1:0,pendItens:''};
 }
 // Retorna dataEntrega (string YYYY-MM-DD) da PRIMEIRA entrega finalizada da O.S.
 function dataEntregaPorOS(os){return infoEntregaPorOS(os).dataEntrega||'';}
@@ -3140,7 +3156,10 @@ function _fmtLib(base,dias){var ms=dataMs(base);if(!ms)return '';var d=new Date(
 // Texto explicando ao vendedor/admin quando cada acompanhamento libera
 function avisoFollow(os){
   var i=infoEntregaPorOS(os);
-  if(!i.dataEntrega)return i.situacao==='agendada'?'Entrega gerada, ainda não finalizada no app. D+3 libera 3 dias após a primeira entrega.':'Aguardando entrega finalizada para liberar acompanhamentos.';
+  if(!i.dataEntrega){
+    if(i.situacao==='agendada')return 'Entrega agendada'+(i.dataPrevista?' — previsão '+_fmtLib(i.dataPrevista,0):'')+'. Ainda não finalizada no app. D+3 libera 3 dias após a primeira entrega.';
+    return 'Aguardando entrega finalizada para liberar acompanhamentos.';
+  }
   var partes=[];
   partes.push(followLiberado(os,3)?'D+3 liberado':'D+3 libera em '+_fmtLib(i.dataEntrega,3));
   if(!i.dataConclusao)partes.push('D+45 e D+90 liberam após concluir a entrega (pendência aberta'+(i.pendItens?': '+i.pendItens:'')+')');
