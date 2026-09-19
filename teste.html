@@ -778,6 +778,19 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
         <tbody id="vvVendas"><tr><td class="empty-row" colspan="4">Nenhuma</td></tr></tbody>
       </table></div>
     </div>
+    <div class="card">
+      <div class="card-hd"><h3 class="card-title">🚚 Entregas Agendadas — Toda a Loja</h3></div>
+      <div class="alert alert-info">Só para acompanhar — visualização, sem edição. Use para responder o cliente na hora ("tem previsão da minha entrega?"). A equipe de entrega atualiza esses status pelo app deles.</div>
+      <div class="filter-row">
+        <select id="vvEntFiltroVend" class="filter-input" onchange="renderVendEntregas()">
+          <option value="">Todos os vendedores</option>
+        </select>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>O.S.</th><th>Cliente</th><th>Vendedor</th><th>Situação</th><th>Motorista</th><th>Previsão / Data</th></tr></thead>
+        <tbody id="vvEntregas"><tr><td class="empty-row" colspan="6">Nenhuma entrega registrada ainda</td></tr></tbody>
+      </table></div>
+    </div>
   </div>
 
   <!-- ===================== VENDEDOR: ORÇAMENTOS ===================== -->
@@ -3287,6 +3300,37 @@ function renderVendVendas(){
   document.getElementById('vv-ticket').textContent=fmt(qtd>0?total/qtd:0);
   document.getElementById('vv-faixa').textContent=getFaixa(total);
   document.getElementById('vvVendas').innerHTML=qtd?[...my].reverse().map(v=>`<tr><td>${fmtDataBR(v.data)}</td><td>${v.cliente}</td><td><code>${v.os}</code></td><td>${fmt(v.valor)}</td></tr>`).join(''):'<tr><td class="empty-row" colspan="4">Nenhuma venda. Reimporte CSV corretamente.</td></tr>';
+  popularFiltroVendEnt();
+  renderVendEntregas();
+}
+const SITUACAO_LABEL={sem_entrega:'—',agendada:'🕐 Agendada',em_parcial:'⏳ Entrega parcial (pendência)',concluida:'✅ Concluída'};
+function popularFiltroVendEnt(){
+  const sel=document.getElementById('vvEntFiltroVend');if(!sel)return;
+  const cur=sel.value;
+  const nomes=[...new Set((S.vendas||[]).map(v=>v.vendedor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  sel.innerHTML='<option value="">Todos os vendedores</option>'+nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
+  sel.value=cur;
+}
+function renderVendEntregas(){
+  const tb=document.getElementById('vvEntregas');if(!tb)return;
+  const selVendEnt=document.getElementById('vvEntFiltroVend');
+  const filtroVend=selVendEnt?selVendEnt.value:'';
+  const vistos={};
+  let base=S.vendas||[];
+  if(filtroVend)base=base.filter(v=>v.vendedor===filtroVend);
+  const linhas=base.filter(v=>{if(!v||!v.os)return false;const b=osBase(v.os);if(vistos[b])return false;vistos[b]=true;return true;})
+    .map(v=>({v,i:infoEntregaPorOS(v.os)})).filter(x=>x.i.situacao&&x.i.situacao!=='sem_entrega');
+  linhas.sort((a,b)=>{const ord={agendada:0,em_parcial:1,concluida:2};return (ord[a.i.situacao]||9)-(ord[b.i.situacao]||9);});
+  if(!linhas.length){tb.innerHTML='<tr><td class="empty-row" colspan="6">Nenhuma entrega registrada ainda</td></tr>';return;}
+  tb.innerHTML=linhas.map(({v,i})=>{
+    const r=(S._entregasStatus||{})[osBase(v.os)];
+    const motorista=(r&&r.motorista)||'—';
+    let dataCol='—';
+    if(i.situacao==='agendada')dataCol=i.dataPrevista?('previsão '+fmtDataBR(i.dataPrevista)):'a agendar';
+    else if(i.situacao==='em_parcial')dataCol=i.dataEntrega?fmtDataBR(i.dataEntrega):'—';
+    else if(i.situacao==='concluida')dataCol=i.dataConclusao?fmtDataBR(i.dataConclusao):(i.dataEntrega?fmtDataBR(i.dataEntrega):'—');
+    return `<tr><td><code>${v.os||'-'}</code></td><td>${v.cliente||'-'}</td><td>${v.vendedor||'-'}</td><td>${SITUACAO_LABEL[i.situacao]||i.situacao}</td><td>${motorista}</td><td>${dataCol}</td></tr>`;
+  }).join('');
 }
 function renderVendOrcs(){
   const fTxt=(document.getElementById('voFiltroTexto')?.value||'').toLowerCase();
