@@ -2377,14 +2377,51 @@ function renderResumo(){
 
 // ===== ENTREGAS PENDENTES (gerar entrega a partir da venda) =====
 function vendaDispensada(v){return normStr(v&&v.entregar)==='nao';}
+function _marcadaParaEntregar(v){return normStr(v&&v.entregar)==='sim';}
 function entregasFeitasSet(){
   var set={};
   (S.entregas||[]).forEach(function(e){if(e&&e.os)set[osBase(e.os)]=true;});
+  // v29d: entrega registrada em QUALQUER mes ja conta como "tem entrega"
+  var idx=S._entregasStatus||{};
+  Object.keys(idx).forEach(function(b){set[b]=true;});
   return set;
+}
+// v29d — ROLLOVER DE ENTREGA: venda de mes anterior cujo ciclo de entrega ainda nao
+// terminou continua aparecendo nas listas de entrega, igual os pedidos viram o mes.
+// NAO mexe em S.vendas: faturamento, meta, ranking e comissao seguem por mes fechado.
+function vendasParaEntrega(){
+  var out=[],visto={};
+  (S.vendas||[]).forEach(function(v){
+    if(!v||!v.os)return;
+    var b=osBase(v.os);if(visto[b])return;visto[b]=true;out.push(v);
+  });
+  var ci=MONTHS.indexOf(currentMonth);
+  if(ci>0&&_allData){
+    for(var mi=0;mi<ci;mi++){
+      var dm=_allData[MONTHS[mi]];
+      if(!dm||!dm.vendas)continue;
+      dm.vendas.forEach(function(v){
+        if(!v||!v.os)return;
+        var b=osBase(v.os);if(visto[b])return;
+        var sit=infoEntregaPorOS(v.os).situacao;
+        // arrasta: entrega agendada, entrega parcial, ou venda marcada "entregar" que nunca foi agendada
+        var aberto=(sit==='agendada'||sit==='em_parcial'||(sit==='sem_entrega'&&_marcadaParaEntregar(v)));
+        if(!aberto)return;
+        visto[b]=true;out.push(v);
+      });
+    }
+  }
+  return out;
+}
+// selo do mes de origem, so quando a venda veio de um mes anterior
+function _seloMes(v){
+  if(!v||!v.mes||String(v.mes)===String(currentMonth))return '';
+  var lab=MLAB[v.mes]||v.mes;
+  return ' <span class="badge b-gray" style="font-size:10px">'+String(lab).split(' ')[0]+'</span>';
 }
 function vendasSemEntrega(){
   var feitas=entregasFeitasSet();
-  return (S.vendas||[]).filter(function(v){return v&&v.os&&!feitas[osBase(v.os)];});
+  return vendasParaEntrega().filter(function(v){return v&&v.os&&!feitas[osBase(v.os)];});
 }
 function vendasPendentesEntrega(){return vendasSemEntrega().filter(function(v){return !vendaDispensada(v);});}
 function vendasDispensadasEntrega(){return vendasSemEntrega().filter(function(v){return vendaDispensada(v);});}
@@ -2396,17 +2433,17 @@ function renderEntregasPendentes(){
   var elV=document.getElementById('ep-valor');if(elV)elV.textContent=fmtShort(valTot);
   var elR=document.getElementById('ep-ret');if(elR)elR.textContent=vendasDispensadasEntrega().length;
   // v27 — vendas do mês em entrega parcial (pendência aberta)
-  var _vistos={};var parc=(S.vendas||[]).filter(function(v){if(!v||!v.os)return false;var b=osBase(v.os);if(_vistos[b])return false;_vistos[b]=true;return infoEntregaPorOS(v.os).situacao==='em_parcial';});
+  var _vistos={};var parc=vendasParaEntrega().filter(function(v){if(!v||!v.os)return false;var b=osBase(v.os);if(_vistos[b])return false;_vistos[b]=true;return infoEntregaPorOS(v.os).situacao==='em_parcial';});
   var elP=document.getElementById('ep-parcial');if(elP)elP.textContent=parc.length;
   var cardP=document.getElementById('epParcialCard');var tbP=document.getElementById('tbEntParcial');
   if(cardP&&tbP){cardP.style.display=parc.length?'':'none';
-    tbP.innerHTML=parc.map(function(v){var i=infoEntregaPorOS(v.os);return '<tr><td><code>'+(v.os||'-')+'</code></td><td><strong>'+(v.cliente||'-')+'</strong></td><td>'+(v.vendedor||'-')+'</td><td>'+(i.dataEntrega?fmtDataBR(i.dataEntrega):'—')+'</td><td>'+i.viagens+(i.abertas?' <span style="color:var(--muted)">('+i.abertas+' a fazer)</span>':'')+'</td><td>'+(i.pendItens||'—')+'</td></tr>';}).join('');}
+    tbP.innerHTML=parc.map(function(v){var i=infoEntregaPorOS(v.os);return '<tr><td><code>'+(v.os||'-')+'</code>'+_seloMes(v)+'</td><td><strong>'+(v.cliente||'-')+'</strong></td><td>'+(v.vendedor||'-')+'</td><td>'+(i.dataEntrega?fmtDataBR(i.dataEntrega):'—')+'</td><td>'+i.viagens+(i.abertas?' <span style="color:var(--muted)">('+i.abertas+' a fazer)</span>':'')+'</td><td>'+(i.pendItens||'—')+'</td></tr>';}).join('');}
   // v28 — vendas com entrega ja agendada mas ainda nao saiu (data prevista)
-  var _vistosAg={};var agnd=(S.vendas||[]).filter(function(v){if(!v||!v.os)return false;var b=osBase(v.os);if(_vistosAg[b])return false;_vistosAg[b]=true;return infoEntregaPorOS(v.os).situacao==='agendada';});
+  var _vistosAg={};var agnd=vendasParaEntrega().filter(function(v){if(!v||!v.os)return false;var b=osBase(v.os);if(_vistosAg[b])return false;_vistosAg[b]=true;return infoEntregaPorOS(v.os).situacao==='agendada';});
   var elAg=document.getElementById('ep-agend');if(elAg)elAg.textContent=agnd.length;
   var cardAg=document.getElementById('epAgendCard');var tbAg=document.getElementById('tbEntAgend');
   if(cardAg&&tbAg){cardAg.style.display=agnd.length?'':'none';
-    tbAg.innerHTML=agnd.map(function(v){var i=infoEntregaPorOS(v.os);var r=(S._entregasStatus||{})[osBase(v.os)];return '<tr><td><code>'+(v.os||'-')+'</code></td><td><strong>'+(v.cliente||'-')+'</strong></td><td>'+(v.vendedor||'-')+'</td><td>'+((r&&r.motorista)||'—')+'</td><td>'+(i.dataPrevista?fmtDataBR(i.dataPrevista):'a agendar')+'</td></tr>';}).join('');}
+    tbAg.innerHTML=agnd.map(function(v){var i=infoEntregaPorOS(v.os);var r=(S._entregasStatus||{})[osBase(v.os)];return '<tr><td><code>'+(v.os||'-')+'</code>'+_seloMes(v)+'</td><td><strong>'+(v.cliente||'-')+'</strong></td><td>'+(v.vendedor||'-')+'</td><td>'+((r&&r.motorista)||'—')+'</td><td>'+(i.dataPrevista?fmtDataBR(i.dataPrevista):'a agendar')+'</td></tr>';}).join('');}
   var filtro=((document.getElementById('epFilter')||{}).value||'').toLowerCase();
   function casa(v){var alvo=((v.cliente||'')+' '+(v.os||'')+' '+(v.endereco||'')).toLowerCase();return alvo.indexOf(filtro)>=0;}
   var tb=document.getElementById('tbEntPend');if(!tb)return;
@@ -3311,7 +3348,7 @@ const SITUACAO_LABEL={sem_entrega:'—',agendada:'🕐 Agendada',em_parcial:'⏳
 function popularFiltroVendEnt(){
   const sel=document.getElementById('vvEntFiltroVend');if(!sel)return;
   const cur=sel.value;
-  const nomes=[...new Set((S.vendas||[]).map(v=>v.vendedor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const nomes=[...new Set(vendasParaEntrega().map(v=>v.vendedor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   sel.innerHTML='<option value="">Todos os vendedores</option>'+nomes.map(n=>`<option value="${n}">${n}</option>`).join('');
   sel.value=cur;
 }
@@ -3320,7 +3357,7 @@ function renderVendEntregas(){
   const selVendEnt=document.getElementById('vvEntFiltroVend');
   const filtroVend=selVendEnt?selVendEnt.value:'';
   const vistos={};
-  let base=S.vendas||[];
+  let base=vendasParaEntrega();
   if(filtroVend)base=base.filter(v=>v.vendedor===filtroVend);
   const linhas=base.filter(v=>{if(!v||!v.os)return false;const b=osBase(v.os);if(vistos[b])return false;vistos[b]=true;return true;})
     .map(v=>({v,i:infoEntregaPorOS(v.os)})).filter(x=>x.i.situacao&&x.i.situacao!=='sem_entrega');
@@ -3333,7 +3370,7 @@ function renderVendEntregas(){
     if(i.situacao==='agendada')dataCol=i.dataPrevista?('previsão '+fmtDataBR(i.dataPrevista)):'a agendar';
     else if(i.situacao==='em_parcial')dataCol=i.dataEntrega?fmtDataBR(i.dataEntrega):'—';
     else if(i.situacao==='concluida')dataCol=i.dataConclusao?fmtDataBR(i.dataConclusao):(i.dataEntrega?fmtDataBR(i.dataEntrega):'—');
-    return `<tr><td><code>${v.os||'-'}</code></td><td>${v.cliente||'-'}</td><td>${v.vendedor||'-'}</td><td>${SITUACAO_LABEL[i.situacao]||i.situacao}</td><td>${motorista}</td><td>${dataCol}</td></tr>`;
+    return `<tr><td><code>${v.os||'-'}</code>${_seloMes(v)}</td><td>${v.cliente||'-'}</td><td>${v.vendedor||'-'}</td><td>${SITUACAO_LABEL[i.situacao]||i.situacao}</td><td>${motorista}</td><td>${dataCol}</td></tr>`;
   }).join('');
 }
 function renderVendOrcs(){
