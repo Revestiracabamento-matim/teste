@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Revestir v23 — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--teal:#0D9A8F;--orange:#F07C1A;--dark:#111827;--mid:#374151;--muted:#9CA3AF;--border:#E5E7EB;--bg:#F9FAFB;--white:#fff;--success:#10B981;--danger:#EF4444;--warning:#F59E0B}
@@ -104,6 +105,86 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
 .big-card-sub{font-size:13px;opacity:.85;margin-top:4px}
 .farol{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
 @media(max-width:768px){.header{padding:0 16px}.tabs{padding:0 16px}.tab-pane{padding:16px}.form-row{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.tab-btn{font-size:11px;padding:10px 12px}.big-meta{grid-template-columns:1fr}.bar-label{width:80px}}
+
+/* v30 — CORRECAO DE BUG: o cabecalho estourava a largura no celular e criava rolagem
+   horizontal em TODAS as telas do painel. Agora ele quebra em duas linhas. */
+@media(max-width:768px){
+  .header{height:auto;min-height:58px;padding:8px 12px;flex-wrap:wrap;gap:8px;row-gap:6px}
+  .header-brand{font-size:16px}
+  .header-brand-icon{width:32px!important;height:32px!important}
+  .header-brand-icon svg{width:30px;height:30px}
+  .header-right{gap:8px;font-size:12px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+  .month-sel{padding:7px 10px;font-size:12px;max-width:150px}
+  .btn-out{padding:7px 12px}
+}
+
+/* ===================== v30 — VISAO GERAL (tela nova, estilos isolados) ===================== */
+#t-visao{--vg-teal:#00B5AD;--vg-teal-dk:#07514E;--vg-teal-md:#0C625E;--vg-teal-tx:#00635F;--vg-teal-lt:#CCEFED;
+  --vg-laranja:#F07800;--vg-laranja-tx:#A04F00;--vg-ok:#17795E;--vg-ruim:#B4271F;
+  --vg-tinta:#141413;--vg-sec:#5C5A55;--vg-linha:#E2DED5;--vg-linha2:#F0EDE6;--vg-fundo:#F3F1EC;
+  font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:var(--vg-tinta)}
+#t-visao *{box-sizing:border-box}
+.vg-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.vg-titulo{font-family:'Playfair Display',Georgia,serif;font-size:25px;font-weight:700;line-height:1.1;margin:0}
+.vg-sub{font-size:12px;color:var(--vg-sec);margin-top:4px}
+.vg-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vg-seg{display:flex;padding:3px;border-radius:9px;background:#E7E3DA}
+.vg-seg button{padding:8px 15px;min-height:38px;border:0;border-radius:7px;background:transparent;
+  font-family:inherit;font-size:12px;color:var(--vg-sec);cursor:pointer}
+.vg-seg button.on{background:#fff;font-weight:600;color:var(--vg-tinta)}
+.vg-sel{padding:9px 12px;border:1px solid #DDD8CE;border-radius:8px;background:#fff;
+  font-family:inherit;font-size:13px;color:var(--vg-tinta);min-height:40px}
+.vg-hero{background:var(--vg-teal-dk);border-radius:14px;padding:24px 28px;display:flex;align-items:flex-end;
+  gap:36px;flex-wrap:wrap;margin-bottom:18px}
+.vg-hero-lbl{font-size:12px;color:#A8D3D0}
+.vg-hero-val{font-size:50px;font-weight:600;color:#fff;letter-spacing:-1.2px;line-height:1.05;margin-top:5px}
+.vg-hero-barra{flex:1 1 320px;padding-bottom:6px}
+.vg-trilho{height:8px;border-radius:4px;background:var(--vg-teal-md);overflow:hidden}
+.vg-preenche{height:100%;background:var(--vg-teal);border-radius:4px}
+.vg-hero-leg{display:flex;justify-content:space-between;gap:12px;margin-top:9px;font-size:12px;color:#A8D3D0;flex-wrap:wrap}
+.vg-pill{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;background:var(--vg-teal-md);
+  font-size:12px;font-weight:600;color:#F5A623;white-space:nowrap}
+.vg-cols{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start;margin-bottom:18px}
+.vg-card{background:#fff;border:1px solid var(--vg-linha);border-radius:12px;padding:18px 20px}
+.vg-card-tit{font-family:'Playfair Display',Georgia,serif;font-size:17px;font-weight:700;margin:0}
+.vg-grupo{font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--vg-sec);margin-bottom:12px}
+.vg-tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:18px}
+.vg-par{display:flex;gap:14px}
+.vg-par+.vg-par{border-top:1px solid var(--vg-linha2);padding-top:12px;margin-top:12px}
+.vg-ind{flex:1 1 0;min-width:0}
+.vg-ind-lbl{font-size:11px;color:var(--vg-sec)}
+.vg-ind-val{font-size:22px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vg-acao{display:flex;align-items:center;gap:11px;padding:12px 0;border-top:1px solid var(--vg-linha2);
+  color:var(--vg-tinta);min-height:44px;text-decoration:none;cursor:pointer;background:none;border-left:0;border-right:0;
+  border-bottom:0;width:100%;text-align:left;font-family:inherit}
+.vg-acao:hover{color:var(--vg-teal-tx)}
+.vg-acao-tx{flex:1 1 auto;font-size:13px;line-height:1.35}
+.vg-acao-n{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.vg-tag{padding:2px 7px;border-radius:999px;background:#FDF0E4;font-size:9px;font-weight:600;
+  letter-spacing:.6px;color:var(--vg-laranja-tx)}
+.vg-barra-linha{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.vg-barra-nome{width:84px;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vg-barra-trilho{flex:1 1 auto;height:14px;min-width:40px}
+.vg-barra-fill{height:100%;background:var(--vg-teal);border-radius:0 4px 4px 0}
+.vg-barra-val{width:96px;text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.vg-mes{display:flex;align-items:flex-end;gap:10px;height:150px;border-bottom:1px solid var(--vg-linha);padding:0 4px}
+.vg-mes-col{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.vg-mes-bar{width:24px;background:var(--vg-teal);border-radius:4px 4px 0 0;min-height:2px}
+.vg-mes-bar.futuro{background:var(--vg-teal-lt)}
+.vg-mes-lbls{display:flex;gap:10px;padding:8px 4px 0}
+.vg-mes-lbl{flex:1 1 0;text-align:center;font-size:11px;color:var(--vg-sec)}
+.vg-vazio{color:var(--vg-sec);font-size:13px;padding:10px 0}
+@media (max-width:900px){
+  .vg-cols{grid-template-columns:minmax(0,1fr)}
+  .vg-tres{grid-template-columns:minmax(0,1fr)}
+  .vg-hero{padding:20px;gap:20px}
+  .vg-hero-val{font-size:38px}
+  .vg-barra-nome{width:70px;font-size:12px}
+  .vg-barra-val{width:84px;font-size:12px}
+  .vg-topo{flex-direction:column;align-items:stretch}
+  .vg-ctrl{justify-content:flex-start}
+  .vg-sel{flex:1 1 auto;min-width:0}
+}
 </style>
 </head>
 <body>
@@ -186,6 +267,7 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
 
   <!-- TABS ADMIN -->
   <div class="tabs" id="adminTabs">
+    <button class="tab-btn" onclick="tab(this,'t-visao')">Visão Geral (nova)</button>
     <button class="tab-btn active" onclick="tab(this,'t-resumo')">📅 Resumo Anual</button>
     <button class="tab-btn" onclick="tab(this,'t-dash')">📈 Dashboard</button>
     <button class="tab-btn" onclick="tab(this,'t-funil-leads')">📊 Rastreio Orçamentos</button>
@@ -270,6 +352,99 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
   </div>
 
   <!-- ===================== RESUMO ANUAL ===================== -->
+  <div id="t-visao" class="tab-pane">
+    <div class="vg-topo">
+      <div>
+        <h2 class="vg-titulo">Visão geral</h2>
+        <div class="vg-sub" id="vgSub">—</div>
+      </div>
+      <div class="vg-ctrl">
+        <div class="vg-seg">
+          <button type="button" id="vgBtMes" class="on" onclick="vgModo('mes')">Mês</button>
+          <button type="button" id="vgBtPer" onclick="vgModo('periodo')">Período</button>
+        </div>
+        <span id="vgPerWrap" style="display:none;align-items:center;gap:8px">
+          <select class="vg-sel" id="vgDe" onchange="renderVisao()"></select>
+          <span style="font-size:12px;color:#5C5A55">até</span>
+          <select class="vg-sel" id="vgAte" onchange="renderVisao()"></select>
+        </span>
+      </div>
+    </div>
+
+    <div class="vg-hero">
+      <div>
+        <div class="vg-hero-lbl" id="vgHeroLbl">Faturamento realizado</div>
+        <div class="vg-hero-val" id="vgHeroVal">R$ 0</div>
+      </div>
+      <div class="vg-hero-barra">
+        <div class="vg-trilho"><div class="vg-preenche" id="vgFill" style="width:0%"></div></div>
+        <div class="vg-hero-leg"><span id="vgLegEsq">—</span><span id="vgLegDir">—</span></div>
+      </div>
+      <span class="vg-pill" id="vgPill">—</span>
+    </div>
+
+    <div class="vg-cols">
+      <div class="vg-card" id="vgMesCard" style="display:none">
+        <h3 class="vg-card-tit">Faturamento mês a mês</h3>
+        <div class="vg-sub" id="vgMesSub" style="margin-bottom:16px">—</div>
+        <div class="vg-mes" id="vgMesBars"></div>
+        <div class="vg-mes-lbls" id="vgMesLbls"></div>
+      </div>
+      <div class="vg-card" id="vgRankCard">
+        <h3 class="vg-card-tit" id="vgRankTit">Ranking da equipe</h3>
+        <div class="vg-sub" style="margin-bottom:16px">Faturamento por vendedor</div>
+        <div id="vgRank"></div>
+      </div>
+      <div class="vg-card">
+        <div style="display:flex;align-items:center;gap:7px">
+          <h3 class="vg-card-tit">Exige sua decisão</h3>
+          <span class="vg-tag">HOJE</span>
+        </div>
+        <div class="vg-sub" id="vgAcaoSub" style="margin-bottom:8px">—</div>
+        <div id="vgAcoes"></div>
+      </div>
+    </div>
+
+    <div class="vg-tres">
+      <div class="vg-card">
+        <div class="vg-grupo" id="vgG1">VENDAS</div>
+        <div class="vg-par">
+          <div class="vg-ind"><div class="vg-ind-lbl">Vendas</div><div class="vg-ind-val" id="vgVQtd">0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl">Ticket médio</div><div class="vg-ind-val" id="vgVTicket">R$ 0</div></div>
+        </div>
+        <div class="vg-par">
+          <div class="vg-ind"><div class="vg-ind-lbl">Orçam. abertos</div><div class="vg-ind-val" id="vgVOrc">0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl">Conversão</div><div class="vg-ind-val" id="vgVConv">—</div></div>
+        </div>
+      </div>
+      <div class="vg-card">
+        <div class="vg-grupo" id="vgG2">DINHEIRO</div>
+        <div class="vg-par">
+          <div class="vg-ind"><div class="vg-ind-lbl">RT a pagar</div><div class="vg-ind-val" id="vgDRt">R$ 0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl">Bonificação</div><div class="vg-ind-val" id="vgDBn">R$ 0</div></div>
+        </div>
+        <div class="vg-par">
+          <div class="vg-ind"><div class="vg-ind-lbl">A pagar fornecedor</div><div class="vg-ind-val" id="vgDPed" style="color:#B4271F">R$ 0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl">Pago no período</div><div class="vg-ind-val" id="vgDPago">R$ 0</div></div>
+        </div>
+      </div>
+      <div class="vg-card" style="border-color:#F0D7C2">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">
+          <span class="vg-grupo" style="margin:0">SITUAÇÃO HOJE</span>
+          <span class="vg-tag">NÃO SOMA</span>
+        </div>
+        <div class="vg-par">
+          <div class="vg-ind"><div class="vg-ind-lbl">Entregas agendadas</div><div class="vg-ind-val" id="vgEAg">0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl">Em parcial</div><div class="vg-ind-val" id="vgEPar" style="color:#A04F00">0</div></div>
+        </div>
+        <div class="vg-par">
+          <div class="vg-ind"><div class="vg-ind-lbl">Concluídas</div><div class="vg-ind-val" id="vgECon">0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl">Pós-venda aberta</div><div class="vg-ind-val" id="vgEPv">0</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="t-resumo" class="tab-pane">
     <div class="alert alert-info">📅 Consolidação de todos os meses do ano. Escolha o intervalo para ver totais.</div>
     <div class="card">
@@ -2217,7 +2392,7 @@ function mesNumero(nome){
 function renderAll(){
   try{populateSelects();}catch(e){console.warn('populateSelects:',e);}
   if(me.role==='admin'){
-    const fns=[renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
+    const fns=[vgPrepararSelects,renderVisao,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
     fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name+' erro:',e);}});
   }else{
     const fns=[renderVendDashboard,renderVendVendas,renderVendOrcs,renderVendPedidos,renderVendPV,renderVendBonif];
@@ -3694,6 +3869,212 @@ function saveVendorPV(){
   document.getElementById('vpvFollow30').value='pendente';
   document.getElementById('vpvProf').value='';
   alert('✅ Pós-venda da O.S. '+os+' registrada!');
+}
+
+// ===================== v30 — VISAO GERAL (tela nova) =====================
+// Reaproveita os mesmos calculos da tela antiga para os numeros baterem.
+var _vgModo='mes', _vgIniciado=false;
+
+function vgModo(m){
+  _vgModo=m;
+  var bm=document.getElementById('vgBtMes'), bp=document.getElementById('vgBtPer'), w=document.getElementById('vgPerWrap');
+  if(bm)bm.className=(m==='mes'?'on':'');
+  if(bp)bp.className=(m==='periodo'?'on':'');
+  if(w)w.style.display=(m==='periodo'?'inline-flex':'none');
+  renderVisao();
+}
+function _vgIcone(cor,d){
+  return '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="'+cor+'" stroke-width="1.6" '+
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
+}
+var _VG_SVG={
+  caminhao:'<path d="M3 7h10v9H3z"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  relogio:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  cartao:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
+  papel:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/>',
+  alerta:'<path d="M12 4.5 2.8 19.5h18.4z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
+  subindo:'<path d="m3 17 6-6 4 4 7-7"/><path d="M15 8h5v5"/>'
+};
+// meses do intervalo escolhido (ou so o mes corrente)
+function _vgMeses(){
+  if(_vgModo!=='periodo')return [currentMonth];
+  var de=document.getElementById('vgDe'), ate=document.getElementById('vgAte');
+  var i1=MONTHS.indexOf(de&&de.value?de.value:currentMonth);
+  var i2=MONTHS.indexOf(ate&&ate.value?ate.value:currentMonth);
+  if(i1<0)i1=0; if(i2<0)i2=MONTHS.length-1;
+  if(i1>i2){var t=i1;i1=i2;i2=t;}
+  return MONTHS.slice(i1,i2+1);
+}
+function _vgDados(m){var d=(_allData||{})[m];return d||{};}
+function _vgNum(x){var n=Number(x);return isFinite(n)?n:0;}
+function _vgEsc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// dias uteis (seg a sab) que ainda restam no mes corrente
+function _vgDiasUteis(){
+  var hoje=new Date(), ano=hoje.getFullYear(), mes=hoje.getMonth();
+  var ult=new Date(ano,mes+1,0).getDate(), n=0;
+  for(var d=hoje.getDate(); d<=ult; d++){ var dia=new Date(ano,mes,d).getDay(); if(dia!==0)n++; }
+  return n;
+}
+
+function renderVisao(){
+  if(!document.getElementById('vgHeroVal'))return;
+  var meses=_vgMeses(), periodo=(_vgModo==='periodo');
+
+  // ---------- o que SOMA ----------
+  var fat=0, qtd=0, rtPago=0, bnPago=0, pedPagoVal=0, orcTot=0, orcConv=0;
+  var porVend={};
+  meses.forEach(function(m){
+    var d=_vgDados(m);
+    (d.vendas||[]).forEach(function(v){
+      var val=_vgNum(v.valor); fat+=val; qtd++;
+      var nome=v.vendedor||'—'; porVend[nome]=(porVend[nome]||0)+val;
+    });
+    (d.orcamentos||[]).forEach(function(o){ orcTot++; if(o.status==='convertido')orcConv++; });
+    (d.rtpagtos||[]).forEach(function(r){ if(r.status==='Pago')rtPago+=_vgNum(r.valor); });
+    (d.bonificacoes||[]).forEach(function(b){ if(b.status==='Pago')bnPago+=_vgNum(b.valorPagar); });
+    (d.pedidos||[]).forEach(function(pd){ if(pd.pgtStatus==='Pago')pedPagoVal+=_vgNum(pd.valor); });
+  });
+  var metaMes=_vgNum(getMetaColetiva())||400000;
+  var metaTot=metaMes*meses.length;
+  var pct=metaTot>0?Math.min(100,fat/metaTot*100):0;
+
+  document.getElementById('vgHeroLbl').textContent=periodo?'Faturamento acumulado no período':'Faturamento realizado';
+  document.getElementById('vgHeroVal').textContent=fmtShort(fat);
+  document.getElementById('vgFill').style.width=pct+'%';
+  var falta=Math.max(0,metaTot-fat);
+  document.getElementById('vgLegEsq').textContent=pct.toFixed(0)+'% da meta'+(periodo?' somada dos '+meses.length+' meses':'')+
+    (falta>0?' — faltam '+fmt(falta):' — meta batida');
+  document.getElementById('vgLegDir').textContent='meta '+fmtShort(metaTot);
+  document.getElementById('vgSub').textContent=periodo
+    ? (MLAB[meses[0]]||meses[0])+' até '+(MLAB[meses[meses.length-1]]||meses[meses.length-1])+' — '+meses.length+' meses'
+    : (MLAB[currentMonth]||currentMonth);
+
+  var pill=document.getElementById('vgPill');
+  if(periodo){
+    var bateram=0;
+    meses.forEach(function(m){ var f=(_vgDados(m).vendas||[]).reduce(function(a,v){return a+_vgNum(v.valor);},0); if(f>=metaMes)bateram++; });
+    pill.innerHTML=_vgIcone('#F5A623',_VG_SVG.subindo)+'<span>'+bateram+' de '+meses.length+' meses na meta</span>';
+  } else {
+    var du=_vgDiasUteis();
+    var txt = pct>=100 ? 'Meta batida'
+      : (du>0 ? fmt(falta/du)+' por dia em '+du+' dias úteis' : 'Mês encerrado');
+    pill.innerHTML=_vgIcone('#F5A623',_VG_SVG.subindo)+'<span>'+txt+'</span>';
+  }
+
+  // ---------- indicadores que somam ----------
+  document.getElementById('vgG1').textContent=periodo?'VENDAS NO PERÍODO':'VENDAS NO MÊS';
+  document.getElementById('vgG2').textContent=periodo?'DINHEIRO NO PERÍODO':'DINHEIRO';
+  document.getElementById('vgVQtd').textContent=qtd;
+  document.getElementById('vgVTicket').textContent=fmt(qtd>0?fat/qtd:0);
+  document.getElementById('vgVConv').textContent=orcTot>0?Math.round(orcConv/orcTot*100)+'%':'—';
+  document.getElementById('vgDPago').textContent=fmtShort(pedPagoVal);
+
+  // ---------- o que NAO soma: sempre HOJE, do mes corrente ----------
+  var orcAbertos=(S.orcamentos||[]).filter(function(o){return o.status==='aberto'||o.status==='negociacao';}).length;
+  document.getElementById('vgVOrc').textContent=orcAbertos;
+
+  var _ind=[];
+  try{ _ind=indicacoesValidas()||[]; }catch(e){ _ind=[]; }
+  var rtTotal=_ind.reduce(function(a,i){return a+_vgNum(i.rt);},0);
+  var rtPagoMes=(S.rtpagtos||[]).filter(function(r){return r.status==='Pago';}).reduce(function(a,r){return a+_vgNum(r.valor);},0);
+  document.getElementById('vgDRt').textContent=fmt(Math.max(0,rtTotal-rtPagoMes));
+  var bnTot=(S.bonificacoes||[]).reduce(function(a,b){return a+_vgNum(b.valorPagar);},0);
+  var bnPg=(S.bonificacoes||[]).filter(function(b){return b.status==='Pago';}).reduce(function(a,b){return a+_vgNum(b.valorPagar);},0);
+  document.getElementById('vgDBn').textContent=fmt(Math.max(0,bnTot-bnPg));
+  var pedAberto=(S.pedidos||[]).filter(function(pd){return pd.pgtStatus!=='Pago';});
+  document.getElementById('vgDPed').textContent=fmtShort(pedAberto.reduce(function(a,pd){return a+_vgNum(pd.valor);},0));
+
+  // entregas: situacao de hoje
+  var ag=0,par=0,con=0,vistos={};
+  (vendasParaEntrega()||[]).forEach(function(v){
+    if(!v||!v.os)return; var b=osBase(v.os); if(vistos[b])return; vistos[b]=true;
+    var sit=infoEntregaPorOS(v.os).situacao;
+    if(sit==='agendada')ag++; else if(sit==='em_parcial')par++; else if(sit==='concluida')con++;
+  });
+  document.getElementById('vgEAg').textContent=ag;
+  document.getElementById('vgEPar').textContent=par;
+  document.getElementById('vgECon').textContent=con;
+  var pvPend=(S.vendas||[]).filter(function(v){
+    var pv=(S.posvenda||{})[osBase(v.os)]; return !pv||pv.follow30!=='realizado';
+  }).length;
+  document.getElementById('vgEPv').textContent=pvPend;
+
+  // ---------- EXIGE SUA DECISAO (sempre hoje) ----------
+  var semEnt=0;
+  try{ semEnt=(vendasPendentesEntrega()||[]).length; }catch(e){ semEnt=0; }
+  var orcParados=(S.orcamentos||[]).filter(function(o){
+    if(o.status!=='aberto'&&o.status!=='negociacao')return false;
+    var ms=dataMs(o.data); if(!ms)return false;
+    return (Date.now()-ms)/86400000>7;
+  }).length;
+  var pvSemana=pvPend;
+  var itens=[
+    {n:semEnt, cor:'#A04F00', ico:_VG_SVG.caminhao, tx:'Vendas sem entrega agendada', aba:'t-entregas-pend'},
+    {n:par,    cor:'#A04F00', ico:_VG_SVG.alerta,   tx:'Entregas com pendência aberta', aba:'t-entregas-pend'},
+    {n:pedAberto.length, cor:'#B4271F', ico:_VG_SVG.cartao, tx:'Pedidos a pagar ao fornecedor', aba:'t-pedidos'},
+    {n:orcParados, cor:'#5C5A55', ico:_VG_SVG.papel, tx:'Orçamentos parados há mais de 7 dias', aba:'t-funil-leads'},
+    {n:pvSemana, cor:'#A04F00', ico:_VG_SVG.relogio, tx:'Pós-venda ainda em aberto', aba:'t-vendas-geral'}
+  ];
+  var totAcao=itens.reduce(function(a,i){return a+i.n;},0);
+  document.getElementById('vgAcaoSub').textContent=totAcao>0
+    ? totAcao+' itens parados esperando você'
+    : 'Nada parado esperando você';
+  document.getElementById('vgAcoes').innerHTML=itens.filter(function(i){return i.n>0;}).map(function(i){
+    return '<button type="button" class="vg-acao" onclick="vgIrPara(\''+i.aba+'\')">'+
+      _vgIcone(i.cor,i.ico)+'<span class="vg-acao-tx">'+i.tx+'</span>'+
+      '<span class="vg-acao-n">'+i.n+'</span></button>';
+  }).join('')||'<div class="vg-vazio">Tudo em dia.</div>';
+
+  // ---------- RANKING ----------
+  var lista=Object.keys(porVend).map(function(k){return {nome:k,val:porVend[k]};})
+    .sort(function(a,b){return b.val-a.val;}).slice(0,6);
+  var maxV=lista.length?lista[0].val:0;
+  document.getElementById('vgRankTit').textContent=periodo?'Ranking do período':'Ranking da equipe';
+  document.getElementById('vgRank').innerHTML=lista.length?lista.map(function(r){
+    var w=maxV>0?Math.max(2,Math.round(r.val/maxV*100)):0;
+    return '<div class="vg-barra-linha"><span class="vg-barra-nome" title="'+_vgEsc(r.nome)+'">'+_vgEsc(r.nome)+'</span>'+
+      '<span class="vg-barra-trilho"><span class="vg-barra-fill" style="display:block;width:'+w+'%"></span></span>'+
+      '<span class="vg-barra-val">'+fmtShort(r.val)+'</span></div>';
+  }).join(''):'<div class="vg-vazio">Sem vendas no período.</div>';
+
+  // ---------- GRAFICO MES A MES (so no modo periodo) ----------
+  var card=document.getElementById('vgMesCard');
+  if(periodo&&meses.length>1){
+    card.style.display='';
+    var vals=meses.map(function(m){
+      return (_vgDados(m).vendas||[]).reduce(function(a,v){return a+_vgNum(v.valor);},0);
+    });
+    var topo=Math.max(metaMes,Math.max.apply(null,vals.concat([1])));
+    var iAtual=meses.indexOf(currentMonth);
+    document.getElementById('vgMesSub').textContent='A meta mensal é '+fmtShort(metaMes)+'. Tom claro: meses sem dados fechados.';
+    document.getElementById('vgMesBars').innerHTML=vals.map(function(v,i){
+      var h=Math.max(1,Math.round(v/topo*100));
+      var futuro=(v===0)||(iAtual>=0&&i>iAtual);
+      return '<div class="vg-mes-col"><span class="vg-mes-bar'+(futuro?' futuro':'')+'" style="height:'+h+'%"></span></div>';
+    }).join('');
+    document.getElementById('vgMesLbls').innerHTML=meses.map(function(m){
+      var nome=String(MLAB[m]||m).split(' ')[0].slice(0,3);
+      var forte=(m===currentMonth);
+      return '<div class="vg-mes-lbl"'+(forte?' style="color:#141413;font-weight:600"':'')+'>'+nome+'</div>';
+    }).join('');
+  } else {
+    card.style.display='none';
+  }
+}
+function vgIrPara(id){
+  var b=document.querySelector('#adminTabs button[onclick*="'+id+'"]');
+  if(b)b.click();
+  window.scrollTo(0,0);
+}
+function vgPrepararSelects(){
+  var de=document.getElementById('vgDe'), ate=document.getElementById('vgAte');
+  if(!de||!ate)return;
+  var op=MONTHS.map(function(m){return '<option value="'+m+'">'+(MLAB[m]||m)+'</option>';}).join('');
+  var vd=de.value, va=ate.value;
+  de.innerHTML=op; ate.innerHTML=op;
+  de.value=vd||MONTHS[0];
+  ate.value=va||currentMonth;
+  _vgIniciado=true;
 }
 
 // ===== SELECTS =====
