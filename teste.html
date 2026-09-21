@@ -185,6 +185,119 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
   .vg-ctrl{justify-content:flex-start}
   .vg-sel{flex:1 1 auto;min-width:0}
 }
+
+/* ===================== v31 — TEMA REVESTIR (vale para TODAS as telas) =====================
+   Reestiliza as classes compartilhadas, entao as 13 telas internas mudam juntas
+   sem precisar mexer no conteudo de cada uma. */
+:root{
+  --rv-teal:#00B5AD;        /* teal da marca — so preenchimento */
+  --rv-teal-tx:#00635F;     /* teal legivel para texto */
+  --rv-teal-dk:#07514E;     /* teal profundo — estrutura */
+  --rv-teal-md:#0C625E;
+  --rv-laranja:#F07800;     /* laranja da marca — so preenchimento */
+  --rv-laranja-tx:#A04F00;  /* laranja legivel para texto */
+  --rv-ok:#17795E; --rv-alerta:#A04F00; --rv-ruim:#B4271F;
+  --rv-tinta:#141413; --rv-sec:#5C5A55;
+  --rv-linha:#E2DED5; --rv-linha2:#F0EDE6; --rv-fundo:#F3F1EC;
+}
+body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:var(--rv-fundo);color:var(--rv-tinta)}
+
+/* --- cartoes --- */
+.card{background:#fff;border:1px solid var(--rv-linha);border-radius:12px;box-shadow:none}
+.card-hd{border-bottom:1px solid var(--rv-linha2);padding-bottom:12px;margin-bottom:16px}
+.card-title{font-family:'Playfair Display',Georgia,serif;font-size:17px;font-weight:700;color:var(--rv-tinta)}
+
+/* --- indicadores --- */
+.metric{background:#fff;border:1px solid var(--rv-linha);border-radius:12px;box-shadow:none}
+.metric-top,.metric-top-orange,.metric-top-green,.metric-top-red{border-top:1px solid var(--rv-linha)}
+.metric-lbl{font-size:11px;color:var(--rv-sec);font-weight:400;letter-spacing:0}
+.metric-val{font-size:24px;font-weight:600;color:var(--rv-tinta)}
+
+/* --- cartoes grandes --- */
+.big-card{border-radius:14px;box-shadow:none}
+.big-card-teal{background:var(--rv-teal-dk);color:#fff}
+.big-card-teal .big-card-lbl,.big-card-teal .big-card-sub{color:#A8D3D0}
+.big-card-teal .big-card-val{color:#fff}
+.big-card-orange{background:#FDF6F0;border:1px solid #F0D7C2;color:var(--rv-tinta)}
+.big-card-orange .big-card-lbl,.big-card-orange .big-card-sub{color:var(--rv-sec)}
+.big-card-orange .big-card-val{color:var(--rv-laranja-tx)}
+.big-card-val{font-weight:600;letter-spacing:-.5px}
+
+/* --- barra de progresso --- */
+.prog-bar{background:#CCEFED;border-radius:4px;height:8px}
+.prog-fill{background:var(--rv-teal);border-radius:4px}
+
+/* --- tabelas --- */
+table thead th{font-size:11px;font-weight:600;color:var(--rv-sec);letter-spacing:.4px;
+  text-transform:uppercase;border-bottom:1px solid var(--rv-linha);background:none}
+table td{border-bottom:1px solid var(--rv-linha2);font-size:13px}
+table tbody tr:hover{background:#FBFAF8}
+.empty-row{color:var(--rv-sec)}
+
+/* --- botoes (contraste corrigido: o teal da marca nao passa com texto branco) --- */
+.btn{border-radius:9px;font-family:inherit;min-height:40px}
+.btn-teal{background:var(--rv-teal-tx);color:#fff}
+.btn-teal:hover{background:var(--rv-teal-dk)}
+.btn-ghost{background:#fff;border:1px solid var(--rv-linha);color:var(--rv-tinta)}
+.btn-ghost:hover{border-color:var(--rv-teal-tx);color:var(--rv-teal-tx)}
+.btn-danger{background:#fff;border:1px solid #E8C9C6;color:var(--rv-ruim)}
+.btn-danger:hover{background:#FBEAE8;border-color:var(--rv-ruim)}
+.btn-sm{min-height:34px}
+
+/* --- selos --- */
+.badge{border-radius:999px;font-size:11px;font-weight:600;padding:3px 9px}
+.b-blue{background:#E6F2F1;color:var(--rv-teal-tx)}
+.b-green{background:#E6F5F0;color:var(--rv-ok)}
+.b-orange{background:#FDF0E4;color:var(--rv-laranja-tx)}
+.b-red{background:#FBEAE8;color:var(--rv-ruim)}
+.b-gray{background:#EFECE5;color:var(--rv-sec)}
+
+/* --- avisos --- */
+.alert{border-radius:10px;border:1px solid var(--rv-linha);background:#fff;color:var(--rv-tinta);font-size:13px}
+.alert-info{background:#F2FAF9;border-color:#CCEFED}
+.alert-orange{background:#FDF6F0;border-color:#F0D7C2}
+
+/* --- filtros e campos --- */
+.filter-input,.field input,.field select,.field textarea,.month-sel{
+  border:1px solid #DDD8CE;border-radius:8px;font-family:inherit;background:#fff}
+.field label{font-size:12px;color:var(--rv-sec);font-weight:500}
+
+/* --- cabecalho --- */
+.header{background:#fff;border-bottom:1px solid var(--rv-linha)}
+
+/* ===================== v31 — MENU LATERAL (admin) ===================== */
+#rvNav{position:fixed;left:0;top:0;bottom:0;width:224px;background:var(--rv-teal-dk);
+  padding:18px 14px;display:none;flex-direction:column;gap:22px;z-index:200;overflow-y:auto}
+body.rv-lateral #rvNav{display:flex}
+body.rv-lateral #app{padding-left:224px}
+body.rv-lateral .header{padding-left:24px}
+#rvNav .rv-marca{display:flex;align-items:center;gap:10px;padding:0 6px}
+#rvNav .rv-marca-nome{font-family:'Playfair Display',Georgia,serif;font-size:19px;font-weight:700;color:#fff;line-height:1}
+#rvNav .rv-marca-sub{font-size:7px;letter-spacing:1.6px;color:#A8D3D0;margin-top:2px}
+.rv-secao{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:9px;background:none;
+  border:0;width:100%;text-align:left;font-family:inherit;font-size:13px;color:#A8D3D0;cursor:pointer;min-height:44px}
+.rv-secao:hover{color:#fff}
+.rv-secao.on{background:var(--rv-teal-md);color:#fff;font-weight:600}
+#rvSub{display:none;gap:8px;flex-wrap:wrap;padding:14px 32px 0}
+body.rv-lateral #rvSub{display:flex}
+.rv-sub-bt{padding:8px 14px;min-height:38px;border:1px solid var(--rv-linha);border-radius:999px;background:#fff;
+  font-family:inherit;font-size:12px;color:var(--rv-sec);cursor:pointer}
+.rv-sub-bt.on{background:var(--rv-teal-dk);border-color:var(--rv-teal-dk);color:#fff;font-weight:600}
+#adminTabs{display:none!important}
+
+/* com o menu lateral, a marca fica so nele — o cabecalho nao repete */
+@media(min-width:901px){ body.rv-lateral .header-brand{display:none} }
+@media(max-width:900px){
+  body.rv-lateral #rvSecoes{flex-direction:row!important;gap:6px;overflow-x:auto}
+  body.rv-lateral #rvNav{position:static;width:auto;flex-direction:row;gap:6px;overflow-x:auto;
+    padding:10px 12px;border-bottom:1px solid var(--rv-teal-md)}
+  body.rv-lateral #rvNav .rv-marca{display:none}
+  body.rv-lateral #app{padding-left:0}
+  body.rv-lateral .header{padding-left:12px}
+  .rv-secao{width:auto;white-space:nowrap;padding:9px 13px}
+  #rvSub{padding:12px 16px 0;overflow-x:auto;flex-wrap:nowrap}
+  .rv-sub-bt{white-space:nowrap}
+}
 </style>
 </head>
 <body>
@@ -266,6 +379,19 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
   </div>
 
   <!-- TABS ADMIN -->
+<nav id="rvNav" aria-label="Menu principal">
+  <div class="rv-marca">
+    <span style="width:30px;height:30px;border-radius:7px;background:#00B5AD;display:flex;align-items:center;justify-content:center;flex:0 0 auto">
+      <span style="width:12px;height:12px;background:#F07800;border-radius:2px;display:block"></span>
+    </span>
+    <span>
+      <span class="rv-marca-nome" style="display:block">Revestir</span>
+      <span class="rv-marca-sub" style="display:block">CONSTRUÇÃO E ACABAMENTO</span>
+    </span>
+  </div>
+  <div id="rvSecoes" style="display:flex;flex-direction:column;gap:3px"></div>
+</nav>
+<div id="rvSub"></div>
   <div class="tabs" id="adminTabs">
     <button class="tab-btn" onclick="tab(this,'t-visao')">Visão Geral (nova)</button>
     <button class="tab-btn active" onclick="tab(this,'t-resumo')">📅 Resumo Anual</button>
@@ -1697,6 +1823,7 @@ function entrarNoApp(){
   ms.value=currentMonth;
   if(me.role==='admin'){
     document.getElementById('adminTabs').classList.remove('hidden');
+    try{ rvMontarMenu(); }catch(e){ console.error('rvMontarMenu:',e); }
     document.getElementById('vendTabs').classList.add('hidden');
     const de=document.getElementById('resDe'),ate=document.getElementById('resAte');
     de.innerHTML=MONTHS.map(function(m){return '<option value="'+m+'">'+MLAB[m]+'</option>';}).join('');
@@ -3871,6 +3998,77 @@ function saveVendorPV(){
   alert('✅ Pós-venda da O.S. '+os+' registrada!');
 }
 
+// ===================== v31 — MENU LATERAL (13 abas -> 6 secoes) =====================
+// As abas antigas continuam no arquivo, escondidas. O menu novo clica nelas por tras,
+// entao todo comportamento que ja existia continua valendo.
+var RV_SECOES=[
+  {id:'visao', nome:'Visão geral', ico:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+   telas:[['t-visao','Resumo do mês']]},
+  {id:'vendas', nome:'Vendas', ico:'<path d="m3 17 6-6 4 4 7-7"/><path d="M15 8h5v5"/>',
+   telas:[['t-dash','Painel do mês'],['t-resumo','Resumo anual'],['t-vendas-geral','Vendas e pós-venda'],['t-funil-leads','Orçamentos']]},
+  {id:'entregas', nome:'Entregas', ico:'<path d="M3 7h10v9H3z"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+   telas:[['t-entregas-pend','Entregas pendentes']]},
+  {id:'financeiro', nome:'Financeiro', ico:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
+   telas:[['t-pedidos','Pedidos'],['t-fornecedores','Fornecedores'],['t-bonificacoes','Bonificações'],['t-prof-rt','Profissionais e RT']]},
+  {id:'equipe', nome:'Equipe', ico:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.4"/><path d="M15 19a4.6 4.6 0 0 1 6-4.2"/>',
+   telas:[['t-vendedores','Usuários e acessos']]},
+  {id:'ajustes', nome:'Ajustes e dados', ico:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>',
+   telas:[['t-import','Importar'],['t-export','Exportar'],['t-config','Configurações']]}
+];
+var _rvSecAtual='visao';
+
+function rvMontarMenu(){
+  var alvo=document.getElementById('rvSecoes');
+  if(!alvo)return;
+  alvo.innerHTML=RV_SECOES.map(function(sec){
+    return '<button type="button" class="rv-secao" id="rvSec_'+sec.id+'" onclick="rvAbrirSecao(\''+sec.id+'\')">'+
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" '+
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+sec.ico+'</svg>'+
+      '<span>'+sec.nome+'</span></button>';
+  }).join('');
+  document.body.classList.add('rv-lateral');
+  rvAbrirSecao(_rvSecAtual);
+}
+function rvAbrirSecao(id){
+  var sec=null;
+  for(var i=0;i<RV_SECOES.length;i++){ if(RV_SECOES[i].id===id)sec=RV_SECOES[i]; }
+  if(!sec)return;
+  _rvSecAtual=id;
+  RV_SECOES.forEach(function(x){
+    var b=document.getElementById('rvSec_'+x.id);
+    if(b)b.className='rv-secao'+(x.id===id?' on':'');
+  });
+  var sub=document.getElementById('rvSub');
+  if(sub){
+    sub.innerHTML=(sec.telas.length>1)?sec.telas.map(function(t){
+      return '<button type="button" class="rv-sub-bt" id="rvSub_'+t[0]+'" onclick="rvAbrirTela(\''+t[0]+'\')">'+t[1]+'</button>';
+    }).join(''):'';
+    sub.style.display=(sec.telas.length>1)?'':'none';
+  }
+  rvAbrirTela(sec.telas[0][0]);
+}
+function rvAbrirTela(paneId){
+  // clica no botao antigo (escondido) para preservar o comportamento original
+  var bt=document.querySelector('#adminTabs button[onclick*="'+paneId+'"]');
+  if(bt){ bt.click(); }
+  else {
+    var ps=document.querySelectorAll('.tab-pane');
+    for(var i=0;i<ps.length;i++)ps[i].classList.remove('active');
+    var el=document.getElementById(paneId); if(el)el.classList.add('active');
+  }
+  var sec=null;
+  for(var k=0;k<RV_SECOES.length;k++){
+    for(var j=0;j<RV_SECOES[k].telas.length;j++){ if(RV_SECOES[k].telas[j][0]===paneId)sec=RV_SECOES[k]; }
+  }
+  if(sec){
+    sec.telas.forEach(function(t){
+      var b=document.getElementById('rvSub_'+t[0]);
+      if(b)b.className='rv-sub-bt'+(t[0]===paneId?' on':'');
+    });
+  }
+  window.scrollTo(0,0);
+}
+
 // ===================== v30 — VISAO GERAL (tela nova) =====================
 // Reaproveita os mesmos calculos da tela antiga para os numeros baterem.
 var _vgModo='mes', _vgIniciado=false;
@@ -3965,7 +4163,7 @@ function renderVisao(){
   document.getElementById('vgG1').textContent=periodo?'VENDAS NO PERÍODO':'VENDAS NO MÊS';
   document.getElementById('vgG2').textContent=periodo?'DINHEIRO NO PERÍODO':'DINHEIRO';
   document.getElementById('vgVQtd').textContent=qtd;
-  document.getElementById('vgVTicket').textContent=fmt(qtd>0?fat/qtd:0);
+  document.getElementById('vgVTicket').textContent=fmtShort(qtd>0?fat/qtd:0);
   document.getElementById('vgVConv').textContent=orcTot>0?Math.round(orcConv/orcTot*100)+'%':'—';
   document.getElementById('vgDPago').textContent=fmtShort(pedPagoVal);
 
@@ -3977,10 +4175,10 @@ function renderVisao(){
   try{ _ind=indicacoesValidas()||[]; }catch(e){ _ind=[]; }
   var rtTotal=_ind.reduce(function(a,i){return a+_vgNum(i.rt);},0);
   var rtPagoMes=(S.rtpagtos||[]).filter(function(r){return r.status==='Pago';}).reduce(function(a,r){return a+_vgNum(r.valor);},0);
-  document.getElementById('vgDRt').textContent=fmt(Math.max(0,rtTotal-rtPagoMes));
+  document.getElementById('vgDRt').textContent=fmtShort(Math.max(0,rtTotal-rtPagoMes));
   var bnTot=(S.bonificacoes||[]).reduce(function(a,b){return a+_vgNum(b.valorPagar);},0);
   var bnPg=(S.bonificacoes||[]).filter(function(b){return b.status==='Pago';}).reduce(function(a,b){return a+_vgNum(b.valorPagar);},0);
-  document.getElementById('vgDBn').textContent=fmt(Math.max(0,bnTot-bnPg));
+  document.getElementById('vgDBn').textContent=fmtShort(Math.max(0,bnTot-bnPg));
   var pedAberto=(S.pedidos||[]).filter(function(pd){return pd.pgtStatus!=='Pago';});
   document.getElementById('vgDPed').textContent=fmtShort(pedAberto.reduce(function(a,pd){return a+_vgNum(pd.valor);},0));
 
@@ -4062,8 +4260,12 @@ function renderVisao(){
   }
 }
 function vgIrPara(id){
-  var b=document.querySelector('#adminTabs button[onclick*="'+id+'"]');
-  if(b)b.click();
+  var sec=null;
+  for(var k=0;k<RV_SECOES.length;k++){
+    for(var j=0;j<RV_SECOES[k].telas.length;j++){ if(RV_SECOES[k].telas[j][0]===id)sec=RV_SECOES[k]; }
+  }
+  if(sec){ rvAbrirSecao(sec.id); rvAbrirTela(id); }
+  else { var b=document.querySelector('#adminTabs button[onclick*="'+id+'"]'); if(b)b.click(); }
   window.scrollTo(0,0);
 }
 function vgPrepararSelects(){
