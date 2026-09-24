@@ -388,6 +388,7 @@ body.rv-lateral #rvSub{display:flex}
     <button class="tab-btn" onclick="tab(this,'t-vendedores')">👥 Usuários</button>
     <button class="tab-btn" onclick="tab(this,'t-import')">📥 Importar</button>
     <button class="tab-btn" onclick="tab(this,'t-export')">📤 Exportar</button>
+    <button class="tab-btn" onclick="tab(this,'t-clientes')">Clientes</button>
     <button class="tab-btn" onclick="tab(this,'t-config')">⚙️ Configurações</button>
   </div>
 
@@ -453,9 +454,10 @@ body.rv-lateral #rvSub{display:flex}
       <div class="card-hd"><h3 class="card-title">Ranking de Vendedores</h3></div>
       <div class="bar-chart" id="barChart" style="margin-bottom:20px"><p style="text-align:center;color:var(--muted)">Sem vendas no mês</p></div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>#</th><th>Vendedor</th><th>Qtd</th><th>Faturado</th><th>Ticket Médio</th><th>Faixa</th></tr></thead>
-        <tbody id="tbDash"><tr><td class="empty-row" colspan="6">Nenhum dado</td></tr></tbody>
+        <thead><tr><th>#</th><th>Vendedor</th><th>Qtd</th><th>Faturado</th><th>Ticket Médio</th><th>Conversão</th><th>Faixa</th></tr></thead>
+        <tbody id="tbDash"><tr><td class="empty-row" colspan="7">Nenhum dado</td></tr></tbody>
       </table></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Conversão = orçamentos do mês que viraram venda. Faturamento alto com ticket baixo e conversão alta merece uma olhada no desconto.</div>
     </div>
   </div>
 
@@ -582,8 +584,8 @@ body.rv-lateral #rvSub{display:flex}
     <div class="card">
       <div class="card-hd"><h3 class="card-title">Ranking Vendedores (Período)</h3></div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>#</th><th>Vendedor</th><th>Vendas</th><th>Faturado</th><th>Faixa</th></tr></thead>
-        <tbody id="tbResumoVend"><tr><td class="empty-row" colspan="5">Nenhum dado</td></tr></tbody>
+        <thead><tr><th>#</th><th>Vendedor</th><th>Vendas</th><th>Faturado</th><th>Ticket Médio</th><th>Conversão</th><th>Faixa</th></tr></thead>
+        <tbody id="tbResumoVend"><tr><td class="empty-row" colspan="7">Nenhum dado</td></tr></tbody>
       </table></div>
     </div>
     <div class="card">
@@ -614,6 +616,7 @@ body.rv-lateral #rvSub{display:flex}
         <tbody id="tbOrcs"><tr><td class="empty-row" colspan="7">Nenhum</td></tr></tbody>
       </table></div>
     </div>
+    <div id="perdasCard"></div>
     <div class="card">
       <div class="card-hd"><h3 class="card-title">Convertidos em Venda</h3></div>
       <div class="tbl-wrap"><table>
@@ -933,6 +936,37 @@ body.rv-lateral #rvSub{display:flex}
   </div>
 
   <!-- ===================== CONFIGURAÇÕES ===================== -->
+  <!-- CLIENTES (v35) — quem comprou, quem voltou, quem sumiu no meio da obra -->
+  <div id="t-clientes" class="tab-pane">
+    <div class="alert alert-info">Uma obra não compra uma vez: compra piso, depois louça, depois metais. Esta tela mostra quem já comprou e parou de voltar.</div>
+    <div class="metrics c4">
+      <div class="metric metric-top"><div class="metric-lbl">Clientes</div><div class="metric-val" id="cl-qtd">0</div><div style="font-size:11px;color:var(--muted)" id="cl-periodo">—</div></div>
+      <div class="metric metric-top-green"><div class="metric-lbl">Compraram mais de uma vez</div><div class="metric-val" style="color:var(--success)" id="cl-recompra">0%</div><div style="font-size:11px;color:var(--muted)" id="cl-recompraqtd">0 clientes</div></div>
+      <div class="metric metric-top"><div class="metric-lbl">Valor médio por cliente</div><div class="metric-val" id="cl-ticket">R$ 0</div><div style="font-size:11px;color:var(--muted)">soma de todas as compras dele</div></div>
+      <div class="metric metric-top-orange"><div class="metric-lbl">Parados há mais de 30 dias</div><div class="metric-val" style="color:var(--orange)" id="cl-parados">0</div><div style="font-size:11px;color:var(--muted)">obra que pode estar comprando fora</div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h3 class="card-title">Clientes</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="filter-input" id="clFiltro" onchange="renderClientes()">
+            <option value="parados">Parados há mais de 30 dias</option>
+            <option value="umavez">Compraram só uma vez</option>
+            <option value="voltaram">Voltaram (2 ou mais compras)</option>
+            <option value="todos">Todos</option>
+          </select>
+          <select class="filter-input" id="clVend" onchange="renderClientes()"><option value="">Todos os vendedores</option></select>
+          <input class="filter-input" id="clBusca" placeholder="Buscar cliente" oninput="renderClientes()">
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Cliente</th><th>Compras</th><th>Total</th><th>Primeira</th><th>Última</th><th>Parado há</th><th>Vendedor</th></tr></thead>
+        <tbody id="clTbl"><tr><td class="empty-row" colspan="7">Sem vendas registradas</td></tr></tbody></table>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Considera todas as vendas de todos os meses carregados. Clientes com o mesmo nome escrito de formas diferentes contam como um só.</div>
+    </div>
+  </div>
+
   <div id="t-config" class="tab-pane">
     <div class="alert alert-info">⚙️ Parâmetros salvos automaticamente. Ajuste conforme a maturidade da equipe — sem precisar alterar o código.</div>
 
@@ -999,6 +1033,13 @@ body.rv-lateral #rvSub{display:flex}
 
   <!-- ===================== VENDEDOR: DASHBOARD ===================== -->  <!-- ===================== VENDEDOR: DASHBOARD ===================== -->
   <div id="vt-dashboard" class="tab-pane active">
+    <div class="card" id="lgCard" style="border-left:4px solid var(--orange)">
+      <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <h3 class="card-title">Ligar hoje</h3>
+        <span id="lgQtd" class="badge b-orange">0</span>
+      </div>
+      <div id="lgLista"></div>
+    </div>
     <div class="big-meta">
       <div class="big-card big-card-teal">
         <div class="big-card-lbl">💰 Minhas Vendas (Mês)</div>
@@ -1300,7 +1341,8 @@ body.rv-lateral #rvSub{display:flex}
     <div class="modal-hd"><h3 style="font-size:15px;font-weight:700">Editar Orçamento</h3><button class="modal-close" onclick="closeOrcVendModal()">✕</button></div>
     <input id="ovmId" type="hidden">
     <div class="field"><label>Cliente</label><input id="ovmCliente" type="text" readonly style="background:var(--bg)"></div>
-    <div class="field"><label>Status</label><select id="ovmStatus"><option value="aberto">🟢 Aberto</option><option value="negociacao">🟡 Em Negociação</option><option value="convertido">✅ Convertido</option><option value="perdido">🔴 Perdido</option></select></div>
+    <div class="field"><label>Status</label><select id="ovmStatus" onchange="ovmToggleMotivo()"><option value="aberto">🟢 Aberto</option><option value="negociacao">🟡 Em Negociação</option><option value="convertido">✅ Convertido</option><option value="perdido">🔴 Perdido</option></select></div>
+    <div class="field" id="ovmMotivoWrap" style="display:none"><label>Motivo da perda (obrigatório)</label><select id="ovmMotivo"><option value="">— por que perdeu? —</option><option value="preco">Preço</option><option value="prazo">Prazo de entrega</option><option value="estoque">Não tínhamos o produto</option><option value="atendimento">Atendimento</option><option value="concorrente">Foi na concorrência</option><option value="obra_parou">A obra parou ou adiou</option><option value="sem_retorno">Cliente sumiu</option><option value="outro">Outro</option></select></div>
     <div class="field"><label>Nº da Venda (O.S. — após fechar)</label><input id="ovmOS" type="text" placeholder="V50265"></div>
     <div class="field">
       <label>Tipo de Conversão</label>
@@ -1325,7 +1367,9 @@ body.rv-lateral #rvSub{display:flex}
   <div class="modal-box" style="max-width:450px">
     <div class="modal-hd"><h3 style="font-size:15px;font-weight:700">Atualizar Orçamento</h3><button class="modal-close" onclick="closeEtapaModal()">✕</button></div>
     <input id="emId" type="hidden">
-    <div class="field"><label>Status</label><select id="emStatus"><option value="aberto">🟢 Aberto</option><option value="negociacao">🟡 Em Negociação</option><option value="perdido">🔴 Perdido</option></select></div>
+    <div class="field"><label>Status</label><select id="emStatus" onchange="emToggleMotivo()"><option value="aberto">🟢 Aberto</option><option value="negociacao">🟡 Em Negociação</option><option value="perdido">🔴 Perdido</option></select></div>
+    <div class="field" id="emMotivoWrap" style="display:none"><label>Motivo da perda (obrigatório)</label><select id="emMotivo"><option value="">— por que perdeu? —</option><option value="preco">Preço</option><option value="prazo">Prazo de entrega</option><option value="estoque">Não tínhamos o produto</option><option value="atendimento">Atendimento</option><option value="concorrente">Foi na concorrência</option><option value="obra_parou">A obra parou ou adiou</option><option value="sem_retorno">Cliente sumiu</option><option value="outro">Outro</option></select>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Sem isso você sabe quanto perdeu e nunca por quê. Três meses disso viram decisão de compra e de preço.</div></div>
     <div style="display:flex;gap:10px;margin-top:20px">
       <button class="btn btn-teal" onclick="saveEtapa()">💾 Salvar</button>
       <button class="btn btn-ghost" onclick="closeEtapaModal()">Cancelar</button>
@@ -1824,7 +1868,9 @@ function entrarNoApp(){
     document.getElementById('vendTabs').classList.remove('hidden');
     document.querySelectorAll('#vendTabs .tab-btn').forEach(function(b,i){b.classList.toggle('active',i===0);});
     document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
-    document.getElementById('vt-vendas').classList.add('active');
+    // v35: a aba marcada e "Meu Dashboard" — abrir vt-vendas aqui mostrava outra tela
+    // que nao era a marcada. Agora abre a tela certa, que comeca pela fila de ligacoes.
+    document.getElementById('vt-dashboard').classList.add('active');
   }
   renderAll();
   if(!window._refV){window._refV=setInterval(autoRefreshVendas,8000);}
@@ -2505,10 +2551,10 @@ function mesNumero(nome){
 function renderAll(){
   try{populateSelects();}catch(e){console.warn('populateSelects:',e);}
   if(me.role==='admin'){
-    const fns=[vgPrepararSelects,renderVisao,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
+    const fns=[vgPrepararSelects,renderVisao,clPrepararSelect,renderClientes,renderPerdas,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
     fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name+' erro:',e);}});
   }else{
-    const fns=[renderVendDashboard,renderVendVendas,renderVendOrcs,renderVendPedidos,renderVendPV,renderVendBonif];
+    const fns=[renderVendDashboard,renderLigarHoje,renderVendVendas,renderVendOrcs,renderVendPedidos,renderVendPV,renderVendBonif];
     fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name+' erro:',e);}});
   }
 }
@@ -2593,9 +2639,10 @@ function renderDash(){
   }).join(''):'<p style="text-align:center;color:var(--muted)">Sem vendas no mês</p>';
   // tabela
   const medals=['🥇','🥈','🥉'];
+  const _cv=rvConversao([currentMonth]);
   document.getElementById('tbDash').innerHTML=sorted.length?sorted.map(([n,d],i)=>{
-    const t=d.total;return `<tr><td>${medals[i]||(i+1)}</td><td><strong>${n}</strong></td><td>${d.qtd}</td><td>${fmt(t)}</td><td>${fmt(d.qtd>0?t/d.qtd:0)}</td><td>${getFaixa(t)}</td></tr>`;
-  }).join(''):'<tr><td class="empty-row" colspan="6">Nenhum dado</td></tr>';
+    const t=d.total;return `<tr><td>${medals[i]||(i+1)}</td><td><strong>${n}</strong></td><td>${d.qtd}</td><td>${fmt(t)}</td><td>${fmt(d.qtd>0?t/d.qtd:0)}</td><td>${rvConvTxt(_cv,n)}</td><td>${getFaixa(t)}</td></tr>`;
+  }).join(''):'<tr><td class="empty-row" colspan="7">Nenhum dado</td></tr>';
 }
 function salvarMetaNuvem(v){
   if(!_token)return;
@@ -2655,9 +2702,10 @@ function renderResumo(){
   // ranking vendedores
   const sortedV=Object.entries(vendAgg).sort((a,b)=>b[1].total-a[1].total);
   const medals=['🥇','🥈','🥉'];
+  const _cvR=rvConversao(range);
   document.getElementById('tbResumoVend').innerHTML=sortedV.length?sortedV.map(([n,d],i)=>
-    `<tr><td>${medals[i]||(i+1)}</td><td><strong>${n}</strong></td><td>${d.qtd}</td><td>${fmt(d.total)}</td><td>${getFaixa(d.total)}</td></tr>`
-  ).join(''):'<tr><td class="empty-row" colspan="5">Nenhum dado</td></tr>';
+    `<tr><td>${medals[i]||(i+1)}</td><td><strong>${n}</strong></td><td>${d.qtd}</td><td>${fmt(d.total)}</td><td>${fmt(d.qtd>0?d.total/d.qtd:0)}</td><td>${rvConvTxt(_cvR,n)}</td><td>${getFaixa(d.total)}</td></tr>`
+  ).join(''):'<tr><td class="empty-row" colspan="7">Nenhum dado</td></tr>';
   // tabela por mês
   document.getElementById('tbResumoMes').innerHTML=porMes.some(p=>p.vendas>0||p.fornPagos>0||p.rt>0)?porMes.map(p=>
     `<tr><td><strong>${MLAB[p.m]}</strong></td><td>${p.vendas}</td><td>${fmt(p.fat)}</td><td>${p.fornPagos} pedidos</td><td>${fmt(p.rt)}</td></tr>`
@@ -2893,9 +2941,22 @@ function renderFunil(){
 function openConvModal(id){const o=S.orcamentos.find(x=>x.id===id);if(!o)return;document.getElementById('cmId').value=id;document.getElementById('cmCliente').textContent=o.cliente;document.getElementById('cmOS').value='';document.getElementById('convModal').classList.remove('hidden');setTimeout(()=>document.getElementById('cmOS').focus(),100);}
 function closeConvModal(){document.getElementById('convModal').classList.add('hidden');}
 function saveConv(){const id=Number(document.getElementById('cmId').value);const os=document.getElementById('cmOS').value.trim().toUpperCase();if(!os){alert('Digite a O.S.');return;}const o=S.orcamentos.find(x=>x.id===id);if(!o)return;o.status='convertido';o.os=os;o.dataConv=hojeISO();if(!S.posvenda[osBase(os)])S.posvenda[osBase(os)]={};saveData();renderAll();closeConvModal();}
-function openEtapaModal(id){const o=S.orcamentos.find(x=>x.id===id);if(!o)return;document.getElementById('emId').value=id;document.getElementById('emStatus').value=o.status;document.getElementById('etapaModal').classList.remove('hidden');}
+function openEtapaModal(id){const o=S.orcamentos.find(x=>x.id===id);if(!o)return;document.getElementById('emId').value=id;document.getElementById('emStatus').value=o.status;document.getElementById('emMotivo').value=o.motivoPerda||'';emToggleMotivo();document.getElementById('etapaModal').classList.remove('hidden');}
+function emToggleMotivo(){var w=document.getElementById('emMotivoWrap');if(w)w.style.display=(document.getElementById('emStatus').value==='perdido')?'':'none';}
 function closeEtapaModal(){document.getElementById('etapaModal').classList.add('hidden');}
-function saveEtapa(){const id=Number(document.getElementById('emId').value);const o=S.orcamentos.find(x=>x.id===id);if(o){o.status=document.getElementById('emStatus').value;saveData();renderAll();}closeEtapaModal();}
+function saveEtapa(){
+  const id=Number(document.getElementById('emId').value);
+  const o=S.orcamentos.find(x=>x.id===id);
+  if(o){
+    const st=document.getElementById('emStatus').value;
+    const mt=document.getElementById('emMotivo').value;
+    if(st==='perdido'&&!mt){alert('Escolha o motivo da perda. É esse campo que depois te mostra onde você está perdendo dinheiro.');return;}
+    o.status=st;
+    o.motivoPerda=(st==='perdido')?mt:'';
+    saveData();renderAll();
+  }
+  closeEtapaModal();
+}
 function dedupOrcamentos(){
   var grupos={};
   S.orcamentos.forEach(function(o){
@@ -3739,13 +3800,20 @@ function openOrcVendModal(id){
   document.getElementById('ovmStatus').value=o.status;
   document.getElementById('ovmOS').value=o.os||'';
   document.getElementById('ovmConv').value=o.conversao||'';
+  document.getElementById('ovmMotivo').value=o.motivoPerda||'';
+  ovmToggleMotivo();
   document.getElementById('orcVendModal').classList.remove('hidden');
 }
 function closeOrcVendModal(){document.getElementById('orcVendModal').classList.add('hidden');}
+function ovmToggleMotivo(){var w=document.getElementById('ovmMotivoWrap');if(w)w.style.display=(document.getElementById('ovmStatus').value==='perdido')?'':'none';}
 function saveOrcVendModal(){
   const id=Number(document.getElementById('ovmId').value);
   const o=S.orcamentos.find(x=>Number(x.id)===Number(id));if(!o)return;
-  o.status=document.getElementById('ovmStatus').value;
+  const _st=document.getElementById('ovmStatus').value;
+  const _mt=document.getElementById('ovmMotivo').value;
+  if(_st==='perdido'&&!_mt){alert('Escolha o motivo da perda antes de salvar.');return;}
+  o.status=_st;
+  o.motivoPerda=(_st==='perdido')?_mt:'';
   const os=document.getElementById('ovmOS').value.trim().toUpperCase();
   if(os){o.os=os;if(!S.posvenda[osBase(os)])S.posvenda[osBase(os)]={};}
   o.conversao=document.getElementById('ovmConv').value;
@@ -3991,6 +4059,254 @@ function rvPintarLogos(){
   var b=document.getElementById('headerLogoImg'); if(b)b.src=RV_LOGO;
 }
 
+// ===================== v37 — CONVERSAO POR VENDEDOR =====================
+// Substituto HONESTO da margem: nao e margem. Mostra, ao lado do faturamento,
+// quantos orcamentos a pessoa converteu e o ticket medio — sinais para separar
+// quem vende muito porque atende muito de quem vende muito porque desconta.
+function rvConversao(meses){
+  var ad=_allData||{}, out={};
+  (meses||[]).forEach(function(m){
+    var d=ad[m]; if(!d||!d.orcamentos)return;
+    d.orcamentos.forEach(function(o){
+      if(!o)return;
+      var k=normStr(o.vendedor); if(!k)return;
+      if(!out[k])out[k]={tot:0,conv:0};
+      out[k].tot++;
+      if(o.status==='convertido')out[k].conv++;
+    });
+  });
+  return out;
+}
+function rvConvTxt(mapa,nome){
+  var c=mapa[normStr(nome)];
+  if(!c||!c.tot)return '<span style="color:var(--muted)">—</span>';
+  var pct=Math.round(c.conv/c.tot*100);
+  return '<strong>'+pct+'%</strong> <span style="color:var(--muted);font-size:11px">('+c.conv+'/'+c.tot+')</span>';
+}
+
+// ===================== v36 — POR QUE PERDEMOS =====================
+var MOTIVO_PERDA_LABEL={preco:'Preço',prazo:'Prazo de entrega',estoque:'Não tínhamos o produto',
+  atendimento:'Atendimento',concorrente:'Foi na concorrência',obra_parou:'A obra parou ou adiou',
+  sem_retorno:'Cliente sumiu',outro:'Outro'};
+function renderPerdas(){
+  var alvo=document.getElementById('perdasCard');
+  if(!alvo)return;
+  var ad=_allData||{}, perdidos=[];
+  MONTHS.forEach(function(m){
+    var d=ad[m]; if(!d||!d.orcamentos)return;
+    d.orcamentos.forEach(function(o){ if(o&&o.status==='perdido')perdidos.push(o); });
+  });
+  if(!perdidos.length){
+    alvo.innerHTML='<div class="card"><div class="card-hd"><h3 class="card-title">Por que perdemos</h3></div>'+
+      '<div style="font-size:13px;color:var(--muted)">Nenhum orçamento marcado como perdido ainda. '+
+      'A partir de agora, ao marcar um como perdido o motivo é obrigatório — e este quadro se monta sozinho.</div></div>';
+    return;
+  }
+  var porMotivo={}, semMotivo=0, totalVal=0;
+  perdidos.forEach(function(o){
+    var v=Number(o.valor||0); totalVal+=v;
+    var k=o.motivoPerda||'';
+    if(!k){semMotivo++;return;}
+    if(!porMotivo[k])porMotivo[k]={qtd:0,valor:0};
+    porMotivo[k].qtd++; porMotivo[k].valor+=v;
+  });
+  var chaves=Object.keys(porMotivo).sort(function(a,b){return porMotivo[b].valor-porMotivo[a].valor;});
+  var maior=chaves.length?porMotivo[chaves[0]].valor:0;
+  var linhas=chaves.map(function(k){
+    var d=porMotivo[k];
+    var w=maior>0?Math.round(d.valor/maior*100):0;
+    return '<div style="margin-bottom:12px">'+
+      '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">'+
+      '<span style="font-weight:600">'+_vgEsc(MOTIVO_PERDA_LABEL[k]||k)+'</span>'+
+      '<span><strong>'+fmtShort(d.valor)+'</strong> <span style="color:var(--muted)">· '+d.qtd+' orçamento(s)</span></span></div>'+
+      '<div class="prog-bar"><div class="prog-fill" style="width:'+w+'%;background:var(--rv-laranja-tx)"></div></div></div>';
+  }).join('');
+  alvo.innerHTML='<div class="card"><div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">'+
+    '<h3 class="card-title">Por que perdemos</h3><span style="font-weight:700;color:var(--danger)">'+fmtShort(totalVal)+'</span></div>'+
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+perdidos.length+' orçamento(s) perdidos em todos os meses carregados.</div>'+
+    (linhas||'<div style="font-size:13px;color:var(--muted)">Nenhum motivo registrado ainda.</div>')+
+    (semMotivo?('<div class="alert alert-orange" style="margin-top:10px;font-size:12px">'+semMotivo+
+      ' perdido(s) sem motivo registrado — são os que já estavam marcados antes desta mudança.</div>'):'')+
+    '</div>';
+}
+
+// ===================== v35 — FILA DE LIGACOES DO VENDEDOR =====================
+// Nao inventa dado: usa orcamentos abertos (de TODOS os meses, nao so o atual) e
+// clientes que ja compraram e pararam de voltar.
+function _lgDias(iso){
+  if(!iso)return null;
+  var a=String(iso).slice(0,10).split('-');
+  if(a.length<3)return null;
+  var d=new Date(Number(a[0]),Number(a[1])-1,Number(a[2]));
+  var h=new Date(); h=new Date(h.getFullYear(),h.getMonth(),h.getDate());
+  return Math.round((h-d)/86400000);
+}
+function _lgOrcamentosMeus(){
+  var ad=_allData||{}, out=[], visto={};
+  MONTHS.forEach(function(m){
+    var d=ad[m]; if(!d||!d.orcamentos)return;
+    d.orcamentos.forEach(function(o){
+      if(!o)return;
+      if(normStr(o.vendedor)!==normStr(me.name))return;
+      if(o.status!=='aberto'&&o.status!=='negociacao')return;
+      var k=String(o.id);
+      if(visto[k])return; visto[k]=true;
+      out.push({cliente:o.cliente||'—',valor:Number(o.valor||0),dias:_lgDias(o.data),num:o.num||''});
+    });
+  });
+  return out;
+}
+function _lgClientesSumidos(){
+  var ad=_allData||{}, mapa={};
+  MONTHS.forEach(function(m){
+    var d=ad[m]; if(!d||!d.vendas)return;
+    d.vendas.forEach(function(v){
+      if(!v||!v.cliente)return;
+      if(normStr(v.vendedor)!==normStr(me.name))return;
+      var k=normStr(v.cliente); if(!k)return;
+      if(!mapa[k])mapa[k]={nome:v.cliente,compras:0,total:0,ultima:''};
+      var c=mapa[k]; c.compras++; c.total+=Number(v.valor||0);
+      var dt=String(v.data||'').slice(0,10);
+      if(dt&&(!c.ultima||dt>c.ultima)){c.ultima=dt;c.nome=v.cliente;}
+    });
+  });
+  return Object.keys(mapa).map(function(k){var c=mapa[k];c.dias=_lgDias(c.ultima);return c;})
+    .filter(function(c){return c.dias!==null&&c.dias>30;});
+}
+function renderLigarHoje(){
+  var alvo=document.getElementById('lgLista');
+  if(!alvo||!me)return;
+  var orcs=_lgOrcamentosMeus().filter(function(o){return o.dias===null||o.dias>=10;});
+  orcs.sort(function(a,b){return (b.dias||0)-(a.dias||0);});
+  var sumidos=_lgClientesSumidos().sort(function(a,b){return b.dias-a.dias;});
+  var total=orcs.length+sumidos.length;
+  var q=document.getElementById('lgQtd');
+  if(q){q.textContent=total;q.className='badge '+(total?'b-orange':'b-green');}
+
+  function linha(nome,detalhe,dias,valor){
+    var cor=(dias===null)?'var(--muted)':(dias>30?'var(--danger)':(dias>=20?'var(--orange)':'var(--teal)'));
+    var txt=(dias===null)?'sem data':(dias+' dia'+(dias===1?'':'s'));
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)">'+
+      '<div style="min-width:0"><div style="font-weight:600;font-size:14px">'+_vgEsc(nome)+'</div>'+
+      '<div style="font-size:12px;color:var(--muted)">'+_vgEsc(detalhe)+'</div></div>'+
+      '<div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:13px">'+fmtShort(valor)+'</div>'+
+      '<div style="font-size:12px;font-weight:600;color:'+cor+'">'+txt+'</div></div></div>';
+  }
+
+  var html='';
+  if(orcs.length){
+    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:4px 0 2px">Orçamento aberto sem resposta</div>'+
+      orcs.slice(0,15).map(function(o){
+        return linha(o.cliente,(o.num?('Orçamento '+o.num+' — '):'')+'parado há '+((o.dias===null)?'?':o.dias)+' dias',o.dias,o.valor);
+      }).join('');
+  }
+  if(sumidos.length){
+    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:14px 0 2px">Comprou e parou de voltar</div>'+
+      sumidos.slice(0,15).map(function(c){
+        return linha(c.nome,c.compras+' compra(s) — última em '+fmtDataBR(c.ultima),c.dias,c.total);
+      }).join('');
+  }
+  if(!html)html='<div style="padding:14px 0;color:var(--muted);font-size:13px">Nenhuma pendência de contato. Todo orçamento aberto tem menos de 10 dias e nenhum cliente seu está há mais de 30 dias sem comprar.</div>';
+  else html+='<div style="font-size:11px;color:var(--muted);margin-top:10px">Orçamento parado há mais de 20 dias fica laranja; mais de 30, vermelho. A obra do seu cliente não espera.</div>';
+  alvo.innerHTML=html;
+}
+
+// ===================== v35 — CLIENTES =====================
+// Junta as vendas de TODOS os meses do cache por cliente. Nao cria campo novo na planilha:
+// tudo sai de vendas que ja existem.
+function _clDias(iso){
+  if(!iso)return null;
+  var a=String(iso).slice(0,10).split('-');
+  if(a.length<3)return null;
+  var d=new Date(Number(a[0]),Number(a[1])-1,Number(a[2]));
+  var h=new Date(); h=new Date(h.getFullYear(),h.getMonth(),h.getDate());
+  return Math.round((h-d)/86400000);
+}
+function clientesAgregados(){
+  var ad=_allData||{};
+  var mapa={};
+  MONTHS.forEach(function(m){
+    var d=ad[m]; if(!d||!d.vendas)return;
+    d.vendas.forEach(function(v){
+      if(!v||!v.cliente)return;
+      var k=normStr(v.cliente);
+      if(!k)return;
+      if(!mapa[k])mapa[k]={nome:v.cliente,compras:0,total:0,primeira:'',ultima:'',vendedores:{}};
+      var c=mapa[k];
+      c.compras++;
+      c.total+=Number(v.valor||0);
+      var dt=String(v.data||'').slice(0,10);
+      if(dt){
+        if(!c.primeira||dt<c.primeira)c.primeira=dt;
+        if(!c.ultima||dt>c.ultima){c.ultima=dt;c.nome=v.cliente;}
+      }
+      if(v.vendedor)c.vendedores[v.vendedor]=(c.vendedores[v.vendedor]||0)+1;
+    });
+  });
+  return Object.keys(mapa).map(function(k){
+    var c=mapa[k];
+    var vs=Object.keys(c.vendedores).sort(function(a,b){return c.vendedores[b]-c.vendedores[a];});
+    c.vendedor=vs.length?vs[0]:'—';
+    c.paradoDias=_clDias(c.ultima);
+    return c;
+  });
+}
+function clPrepararSelect(){
+  var sel=document.getElementById('clVend');
+  if(!sel)return;
+  var atual=sel.value;
+  var nomes=((_allGlobal&&_allGlobal.vendedores)||[]).filter(function(u){
+    return String(u.papel||'').toLowerCase()!=='entrega';
+  }).map(function(u){return u.nome;});
+  sel.innerHTML='<option value="">Todos os vendedores</option>'+nomes.map(function(n){
+    return '<option value="'+_vgEsc(n)+'">'+_vgEsc(n)+'</option>';}).join('');
+  if(atual)sel.value=atual;
+}
+function renderClientes(){
+  var tb=document.getElementById('clTbl');
+  if(!tb)return;
+  var todos=clientesAgregados();
+  var qtd=todos.length;
+  var voltaram=todos.filter(function(c){return c.compras>1;});
+  var somaTotal=todos.reduce(function(a,c){return a+c.total;},0);
+  var parados=todos.filter(function(c){return c.paradoDias!==null&&c.paradoDias>30;});
+  document.getElementById('cl-qtd').textContent=qtd;
+  document.getElementById('cl-recompra').textContent=(qtd?Math.round(voltaram.length/qtd*100):0)+'%';
+  document.getElementById('cl-recompraqtd').textContent=voltaram.length+' cliente(s)';
+  document.getElementById('cl-ticket').textContent=fmtShort(qtd?somaTotal/qtd:0);
+  document.getElementById('cl-parados').textContent=parados.length;
+  var mesesComDado=MONTHS.filter(function(m){var d=(_allData||{})[m];return d&&d.vendas&&d.vendas.length;});
+  document.getElementById('cl-periodo').textContent=mesesComDado.length?(MLAB[mesesComDado[0]]+' a '+MLAB[mesesComDado[mesesComDado.length-1]]):'sem vendas';
+
+  var filtro=(document.getElementById('clFiltro')||{}).value||'parados';
+  var vend=(document.getElementById('clVend')||{}).value||'';
+  var busca=normStr((document.getElementById('clBusca')||{}).value||'');
+  var lista=todos.slice();
+  if(filtro==='parados')lista=lista.filter(function(c){return c.paradoDias!==null&&c.paradoDias>30;});
+  if(filtro==='umavez')lista=lista.filter(function(c){return c.compras===1;});
+  if(filtro==='voltaram')lista=lista.filter(function(c){return c.compras>1;});
+  if(vend)lista=lista.filter(function(c){return normStr(c.vendedor)===normStr(vend);});
+  if(busca)lista=lista.filter(function(c){return normStr(c.nome).indexOf(busca)>=0;});
+  lista.sort(function(a,b){
+    if(filtro==='voltaram'||filtro==='todos')return b.total-a.total;
+    return (b.paradoDias||0)-(a.paradoDias||0);
+  });
+  tb.innerHTML=lista.length?lista.slice(0,300).map(function(c){
+    var d=c.paradoDias;
+    var cor=(d===null)?'var(--muted)':(d>60?'var(--danger)':(d>30?'var(--orange)':'var(--success)'));
+    var txt=(d===null)?'—':(d+' dia'+(d===1?'':'s'));
+    return '<tr>'+
+      '<td><strong>'+_vgEsc(c.nome)+'</strong></td>'+
+      '<td>'+c.compras+(c.compras>1?' <span class="badge b-green">voltou</span>':'')+'</td>'+
+      '<td><strong>'+fmtShort(c.total)+'</strong></td>'+
+      '<td>'+fmtDataBR(c.primeira)+'</td>'+
+      '<td>'+fmtDataBR(c.ultima)+'</td>'+
+      '<td style="color:'+cor+';font-weight:600">'+txt+'</td>'+
+      '<td>'+_vgEsc(c.vendedor)+'</td>'+
+      '</tr>';
+  }).join(''):'<tr><td class="empty-row" colspan="7">Nenhum cliente neste filtro</td></tr>';
+}
+
 // ===================== v31 — MENU LATERAL (13 abas -> 6 secoes) =====================
 // As abas antigas continuam no arquivo, escondidas. O menu novo clica nelas por tras,
 // entao todo comportamento que ja existia continua valendo.
@@ -3998,7 +4314,7 @@ var RV_SECOES=[
   {id:'visao', nome:'Visão geral', ico:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
    telas:[['t-visao','Resumo do mês']]},
   {id:'vendas', nome:'Vendas', ico:'<path d="m3 17 6-6 4 4 7-7"/><path d="M15 8h5v5"/>',
-   telas:[['t-dash','Painel do mês'],['t-resumo','Resumo anual'],['t-vendas-geral','Vendas e pós-venda'],['t-funil-leads','Orçamentos']]},
+   telas:[['t-dash','Painel do mês'],['t-resumo','Resumo anual'],['t-clientes','Clientes'],['t-vendas-geral','Vendas e pós-venda'],['t-funil-leads','Orçamentos']]},
   {id:'entregas', nome:'Entregas', ico:'<path d="M3 7h10v9H3z"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
    telas:[['t-entregas-pend','Entregas pendentes']]},
   {id:'financeiro', nome:'Financeiro', ico:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
@@ -4113,12 +4429,13 @@ function renderVisao(){
 
   // ---------- o que SOMA ----------
   var fat=0, qtd=0, rtPago=0, bnPago=0, pedPagoVal=0, orcTot=0, orcConv=0;
-  var porVend={};
+  var porVend={}, porVendQtd={};
   meses.forEach(function(m){
     var d=_vgDados(m);
     (d.vendas||[]).forEach(function(v){
       var val=_vgNum(v.valor); fat+=val; qtd++;
       var nome=v.vendedor||'—'; porVend[nome]=(porVend[nome]||0)+val;
+      porVendQtd[nome]=(porVendQtd[nome]||0)+1;
     });
     (d.orcamentos||[]).forEach(function(o){ orcTot++; if(o.status==='convertido')orcConv++; });
     (d.rtpagtos||[]).forEach(function(r){ if(r.status==='Pago')rtPago+=_vgNum(r.valor); });
@@ -4221,11 +4538,17 @@ function renderVisao(){
     .sort(function(a,b){return b.val-a.val;}).slice(0,6);
   var maxV=lista.length?lista[0].val:0;
   document.getElementById('vgRankTit').textContent=periodo?'Ranking do período':'Ranking da equipe';
+  var _cvV=rvConversao(meses);
   document.getElementById('vgRank').innerHTML=lista.length?lista.map(function(r){
     var w=maxV>0?Math.max(2,Math.round(r.val/maxV*100)):0;
-    return '<div class="vg-barra-linha"><span class="vg-barra-nome" title="'+_vgEsc(r.nome)+'">'+_vgEsc(r.nome)+'</span>'+
+    var q=porVendQtd[r.nome]||0;
+    var c=_cvV[normStr(r.nome)];
+    var conv=(c&&c.tot)?(Math.round(c.conv/c.tot*100)+'% de conversão'):'sem orçamento registrado';
+    return '<div style="margin-bottom:10px">'+
+      '<div class="vg-barra-linha" style="margin-bottom:2px"><span class="vg-barra-nome" title="'+_vgEsc(r.nome)+'">'+_vgEsc(r.nome)+'</span>'+
       '<span class="vg-barra-trilho"><span class="vg-barra-fill" style="display:block;width:'+w+'%"></span></span>'+
-      '<span class="vg-barra-val">'+fmtShort(r.val)+'</span></div>';
+      '<span class="vg-barra-val">'+fmtShort(r.val)+'</span></div>'+
+      '<div style="font-size:11px;color:var(--vg-sec,#5C5A55);padding-left:2px">'+q+' venda'+(q===1?'':'s')+' · ticket '+fmtShort(q?r.val/q:0)+' · '+conv+'</div></div>';
   }).join(''):'<div class="vg-vazio">Sem vendas no período.</div>';
 
   // ---------- GRAFICO MES A MES (so no modo periodo) ----------
