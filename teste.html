@@ -519,9 +519,10 @@ body.rv-lateral #rvSub{display:flex}
       <div class="vg-card">
         <div class="vg-grupo" id="vgG1">VENDAS</div>
         <div class="vg-par">
-          <div class="vg-ind"><div class="vg-ind-lbl">Vendas</div><div class="vg-ind-val" id="vgVQtd">0</div></div>
-          <div class="vg-ind"><div class="vg-ind-lbl">Ticket médio</div><div class="vg-ind-val" id="vgVTicket">R$ 0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl">Vendas novas</div><div class="vg-ind-val" id="vgVQtd">0</div></div>
+          <div class="vg-ind"><div class="vg-ind-lbl" title="Tudo o que já entrou dessas vendas, somando as parcelas de todos os meses">Ticket médio</div><div class="vg-ind-val" id="vgVTicket">R$ 0</div></div>
         </div>
+        <div id="vgVQtdSub" style="font-size:11px;line-height:1.35;color:#5C5A55;margin:6px 0 12px">—</div>
         <div class="vg-par">
           <div class="vg-ind"><div class="vg-ind-lbl">Orçam. abertos</div><div class="vg-ind-val" id="vgVOrc">0</div></div>
           <div class="vg-ind"><div class="vg-ind-lbl">Conversão</div><div class="vg-ind-val" id="vgVConv">—</div></div>
@@ -4500,6 +4501,27 @@ function _vgMeses(){
   return MONTHS.slice(i1,i2+1);
 }
 function _vgDados(m){var d=(_allData||{})[m];return d||{};}
+// v39: o relatorio de comissao traz so o que foi RECEBIDO — a mesma venda volta nos meses seguintes (parcela 2, 3...).
+// Venda nova = O.S. que aparece pela primeira vez naquele mes. Parcela de venda antiga nao conta como venda.
+function rvPrimeiroMesOS(){
+  var p={};
+  MONTHS.forEach(function(m,i){(_vgDados(m).vendas||[]).forEach(function(v){if(!v||!v.os)return;var b=osBase(v.os);if(!(b in p))p[b]=i;});});
+  return p;
+}
+function rvVendasNovas(meses){
+  var prim=rvPrimeiroMesOS(), idx={}, novas={}, porVend={}, parcelas=0, parcVal=0;
+  meses.forEach(function(m){idx[MONTHS.indexOf(m)]=true;});
+  meses.forEach(function(m){(_vgDados(m).vendas||[]).forEach(function(v){
+    if(!v||!v.os)return; var b=osBase(v.os);
+    if(idx[prim[b]]){ if(!novas[b]){novas[b]=v.vendedor||'—';porVend[novas[b]]=(porVend[novas[b]]||0)+1;} }
+    else { parcelas++; parcVal+=_vgNum(v.valor); }
+  });});
+  // ticket: tudo o que ja entrou dessas vendas, em qualquer mes (vai se completando conforme as parcelas chegam)
+  var recebido=0, recVend={};
+  MONTHS.forEach(function(m){(_vgDados(m).vendas||[]).forEach(function(v){if(!v||!v.os)return;var dono=novas[osBase(v.os)];if(!dono)return;var x=_vgNum(v.valor);recebido+=x;recVend[dono]=(recVend[dono]||0)+x;});});
+  var qtd=Object.keys(novas).length;
+  return {qtd:qtd, porVend:porVend, recVend:recVend, parcelas:parcelas, parcVal:parcVal, recebido:recebido, ticket:qtd?recebido/qtd:0, primeiroMes:MONTHS[Math.min.apply(null,Object.keys(prim).map(function(k){return prim[k];}).concat([MONTHS.length-1]))]};
+}
 function _vgNum(x){var n=Number(x);return isFinite(n)?n:0;}
 function _vgEsc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // dias uteis (seg a sab) que ainda restam no mes corrente
@@ -4559,8 +4581,12 @@ function renderVisao(){
   // ---------- indicadores que somam ----------
   document.getElementById('vgG1').textContent=periodo?'VENDAS NO PERÍODO':'VENDAS NO MÊS';
   document.getElementById('vgG2').textContent=periodo?'DINHEIRO NO PERÍODO':'DINHEIRO';
-  document.getElementById('vgVQtd').textContent=qtd;
-  document.getElementById('vgVTicket').textContent=fmtShort(qtd>0?fat/qtd:0);
+  var _vn=rvVendasNovas(meses);
+  document.getElementById('vgVQtd').textContent=_vn.qtd;
+  document.getElementById('vgVTicket').textContent=fmtShort(_vn.ticket);
+  var _vnSub=document.getElementById('vgVQtdSub');
+  if(_vnSub)_vnSub.textContent=(_vn.parcelas?'+ '+_vn.parcelas+' parcela'+(_vn.parcelas===1?'':'s')+' de vendas anteriores ('+fmtShort(_vn.parcVal)+')':'nenhuma parcela de venda anterior')+
+    (meses.indexOf(_vn.primeiroMes)>=0?' · no 1º mês lançado, tudo conta como venda nova':'');
   document.getElementById('vgVConv').textContent=orcTot>0?Math.round(orcConv/orcTot*100)+'%':'—';
   document.getElementById('vgDPago').textContent=fmtShort(pedPagoVal);
 
@@ -4628,14 +4654,14 @@ function renderVisao(){
   var _cvV=rvConversao(meses);
   document.getElementById('vgRank').innerHTML=lista.length?lista.map(function(r){
     var w=maxV>0?Math.max(2,Math.round(r.val/maxV*100)):0;
-    var q=porVendQtd[r.nome]||0;
+    var q=_vn.porVend[r.nome]||0;
     var c=_cvV[normStr(r.nome)];
     var conv=(c&&c.tot)?(Math.round(c.conv/c.tot*100)+'% de conversão'):'sem orçamento registrado';
     return '<div style="margin-bottom:10px">'+
       '<div class="vg-barra-linha" style="margin-bottom:2px"><span class="vg-barra-nome" title="'+_vgEsc(r.nome)+'">'+_vgEsc(r.nome)+'</span>'+
       '<span class="vg-barra-trilho"><span class="vg-barra-fill" style="display:block;width:'+w+'%"></span></span>'+
       '<span class="vg-barra-val">'+fmtShort(r.val)+'</span></div>'+
-      '<div style="font-size:11px;color:var(--vg-sec,#5C5A55);padding-left:2px">'+q+' venda'+(q===1?'':'s')+' · ticket '+fmtShort(q?r.val/q:0)+' · '+conv+'</div></div>';
+      '<div style="font-size:11px;color:var(--vg-sec,#5C5A55);padding-left:2px">'+q+' venda'+(q===1?'':'s')+' nova'+(q===1?'':'s')+' · ticket '+fmtShort(q?(_vn.recVend[r.nome]||0)/q:0)+' · '+conv+'</div></div>';
   }).join(''):'<div class="vg-vazio">Sem vendas no período.</div>';
 
   // ---------- GRAFICO MES A MES (so no modo periodo) ----------
