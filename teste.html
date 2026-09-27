@@ -1923,27 +1923,71 @@ let _filaAtiva=false;
 let _filaRetry=[];   // falharam (rede ou porta recusou) — reprocessáveis
 let _avisouVendedor=false;
 
-function enfileirar(item){_fila.push(item);if(!_filaAtiva)processarFila();}
-function enfileirarDelete(sheet,id){_fila.push({_del:true,sheet:sheet,id:id});if(!_filaAtiva)processarFila();}
+var _seqGrav=0;            // v38: muda a cada gravacao — a atualizacao automatica nao sobrescreve o que esta sendo gravado
+var _gravTotal=0,_gravFeito=0;
+function _qtdItem(it){return it._lote?it.rows.length:(it._delLote?it.itens.length:1);}
+function enfileirar(item){_seqGrav++;_gravTotal+=_qtdItem(item);_fila.push(item);rvStatusGravacao();if(!_filaAtiva)processarFila();}
+function enfileirarDelete(sheet,id,mes){_seqGrav++;_gravTotal+=1;_fila.push({_del:true,sheet:sheet,id:id,mes:mes});rvStatusGravacao();if(!_filaAtiva)processarFila();}
+// Faixa fixa no topo: mostra que ainda esta gravando e avisa se algo NAO foi salvo.
+function rvStatusGravacao(){
+  var el=document.getElementById('rvGravStatus');
+  if(!el){
+    el=document.createElement('div');el.id='rvGravStatus';
+    el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:10px;z-index:9999;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.18);display:none;max-width:92vw;text-align:center';
+    document.body.appendChild(el);
+  }
+  var pend=_fila.length+(_filaAtiva?1:0);
+  if(_filaRetry.length){
+    var n=_filaRetry.reduce(function(a,it){return a+_qtdItem(it);},0);
+    el.style.background='#B4271F';el.style.color='#fff';el.style.display='block';
+    el.innerHTML=n+' registro(s) NÃO foram salvos na nuvem. '+
+      '<button type="button" onclick="reprocessarFalhas()" style="margin-left:8px;padding:4px 10px;border:0;border-radius:6px;background:#fff;color:#B4271F;font-weight:700;cursor:pointer">Tentar de novo</button>';
+    return;
+  }
+  if(pend>0){
+    el.style.background='#07514E';el.style.color='#fff';el.style.display='block';
+    el.textContent='Salvando na nuvem… '+Math.min(_gravFeito,_gravTotal)+' de '+_gravTotal+' — não feche esta página';
+    return;
+  }
+  if(_gravTotal>0){
+    el.style.background='#17795E';el.style.color='#fff';el.style.display='block';
+    el.textContent='Tudo salvo na nuvem ('+_gravTotal+' registro'+(_gravTotal===1?'':'s')+').';
+    _gravTotal=0;_gravFeito=0;
+    setTimeout(function(){var e=document.getElementById('rvGravStatus');if(e&&!_fila.length&&!_filaAtiva&&!_filaRetry.length)e.style.display='none';},3500);
+    return;
+  }
+  el.style.display='none';
+}
+// Fechar ou recarregar com gravacao pendente: o navegador pergunta antes.
+window.addEventListener('beforeunload',function(e){
+  if(_filaAtiva||_fila.length||_filaRetry.length){e.preventDefault();e.returnValue='Ainda há dados sendo salvos. Se sair agora, eles se perdem.';return e.returnValue;}
+});
 function processarFila(){
-  if(!_fila.length){_filaAtiva=false;return;}
+  if(!_fila.length){_filaAtiva=false;rvStatusGravacao();return;}
   _filaAtiva=true;
   var it=_fila.shift();
-  var payload = it._del
-    ? {action:'deleteRow',token:_token,sheet:it.sheet,id:it.id}
-    : {action:'saveRow',token:_token,sheet:it.sheet,row:it.row};
+  var payload;
+  if(it._lote)payload={action:'saveRows',token:_token,sheet:it.sheet,rows:it.rows};
+  else if(it._delLote)payload={action:'deleteRows',token:_token,sheet:it.sheet,itens:it.itens};
+  else if(it._del){payload={action:'deleteRow',token:_token,sheet:it.sheet,id:it.id};if(it.mes)payload.mes=it.mes;}
+  else payload={action:'saveRow',token:_token,sheet:it.sheet,row:it.row};
+  rvStatusGravacao();
   chamarPorta(payload,
     function(res){
-      if(!res||!res.ok){console.error('[fila] PORTA RECUSOU',it.sheet,(res&&res.erro)||'sem erro',it);_filaRetry.push(it);}
-      else{console.log('[fila] OK',it._del?('DEL '+it.sheet+' id='+it.id):('SAVE '+it.sheet),it._del?'':it.row);}
+      if(!res||!res.ok){console.error('[fila] PORTA RECUSOU',it.sheet,(res&&res.erro)||'sem erro',it);it._tent=(it._tent||0)+1;_filaRetry.push(it);}
+      else{_gravFeito+=_qtdItem(it);console.log('[fila] OK',payload.action,it.sheet,res);}
       processarFila();
     },
-    function(err){console.error('[fila] FALHA REDE',it.sheet,err,it);_filaRetry.push(it);processarFila();}
+    function(err){console.error('[fila] FALHA REDE',it.sheet,err,it);it._tent=(it._tent||0)+1;_filaRetry.push(it);processarFila();}
   );
 }
-function reprocessarFalhas(){
+function reprocessarFalhas(auto){
   if(!_filaRetry.length){console.log('[retry] nada pendente');return 0;}
-  var n=_filaRetry.length;_fila=_fila.concat(_filaRetry);_filaRetry=[];if(!_filaAtiva)processarFila();
+  var vai=auto?_filaRetry.filter(function(it){return (it._tent||0)<3;}):_filaRetry.slice();
+  if(!vai.length){rvStatusGravacao();return 0;}
+  _filaRetry=_filaRetry.filter(function(it){return vai.indexOf(it)<0;});
+  if(!auto)vai.forEach(function(it){it._tent=0;});
+  var n=vai.length;_fila=_fila.concat(vai);if(!_filaAtiva)processarFila();
   console.log('[retry] reenfileiradas '+n+' linha(s)');return n;
 }
 
@@ -1967,7 +2011,21 @@ function _delRow(meta,row,incluiMes){var r={};r[meta.chave]=row[meta.chave];r._d
 
 // ----- agruparPorMes: a porta devolve arrays PLANOS (com campo .mes em cada linha);
 //       o dashboard trabalha por mês (_allData[mes].vendas). Converte um no outro. -----
+// v38: aceita 26/05/2026, 2026-05-26 e 2026-05-26T03:00:00.000Z — devolve sempre 2026-05-26.
+function rvDataISO(v){
+  if(v===undefined||v===null)return '';
+  var t=String(v).trim(); if(!t)return '';
+  var m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m)return m[3]+'-'+(m[2].length<2?'0':'')+m[2]+'-'+(m[1].length<2?'0':'')+m[1];
+  m=t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m)return m[1]+'-'+m[2]+'-'+m[3];
+  return t;
+}
 function agruparPorMes(dadosPlanos){
+  ['vendas','orcamentos'].forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(r&&r.data)r.data=rvDataISO(r.data);});});
+  // v38: o Sheets transforma 5000 (texto) em numero. Sem isto, apagar/reimportar nao achava a O.S. e a tela quebrava.
+  var _txt={vendas:['os','cliente','vendedor'],orcamentos:['os','num','cliente','vendedor','tel'],pedidos:['os','cliente'],indicacoes:['os','venda'],posvenda:['osBase'],bonificacoes:['numVenda','vendedor']};
+  Object.keys(_txt).forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(!r)return;_txt[tab].forEach(function(c){if(r[c]!==undefined&&r[c]!==null&&r[c]!==''&&typeof r[c]!=='string')r[c]=String(r[c]);});});});
   var out={};
   MONTHS.forEach(function(m){out[m]={meta:400000,vendas:[],orcamentos:[],posvenda:{},pedidos:[],indicacoes:[],rtpagtos:[],bonificacoes:[],entregas:[]};});
   ['vendas','orcamentos','pedidos','indicacoes','rtpagtos','bonificacoes'].forEach(function(tab){
@@ -2071,16 +2129,30 @@ function saveData(){
   var antes=_snapS, agora=S;
   _allData[currentMonth]=deepClone(S); // cache sempre coerente com a UI
   if(antes){
+    // v38: o admin grava o mes inteiro em LOTE (1 chamada a cada 150 linhas).
+    // Antes era 1 chamada por linha: 220 vendas = 20 a 40 min, e fechar a pagina perdia o resto.
+    var _lote=(me&&me.role==='admin');
     Object.keys(TABELAS_S).forEach(function(nome){
       var meta=TABELAS_S[nome];
       var d=diffTabela(meta,agora[nome],antes[nome]);
-      d.upserts.forEach(function(row){var r=Object.assign({},row);r.mes=currentMonth;enfileirar({sheet:meta.sheet,row:r});});
+      var ups=d.upserts.map(function(row){var r=Object.assign({},row);r.mes=currentMonth;return r;});
+      if(_lote&&ups.length){
+        for(var i=0;i<ups.length;i+=150)enfileirar({_lote:true,sheet:meta.sheet,rows:ups.slice(i,i+150)});
+      }else{
+        ups.forEach(function(r){enfileirar({sheet:meta.sheet,row:r});});
+      }
+      var campo=CHAVE_PORTA[meta.sheet];
+      var dels=[];
       d.deletes.forEach(function(row){
-        var campo=CHAVE_PORTA[meta.sheet];
         var valor=row[campo];
         if(valor===undefined||valor===null||valor===''){console.warn('[delete] sem chave-da-porta — ignorado p/ não corromper',meta.sheet,row);return;}
-        enfileirarDelete(meta.sheet,valor);
+        var it={};it[campo]=valor;it.mes=currentMonth;dels.push(it);
       });
+      if(_lote&&dels.length){
+        for(var j=0;j<dels.length;j+=150)enfileirar({_delLote:true,sheet:meta.sheet,itens:dels.slice(j,j+150)});
+      }else{
+        dels.forEach(function(it){enfileirarDelete(meta.sheet,it[campo],currentMonth);});
+      }
     });
     if(String(agora.meta)!==String(antes.meta)){
       // Meta é escalar por mês. Sheet 'Meta' assumida — confirme o nome no Apps Script.
@@ -2126,9 +2198,12 @@ function saveGlobal(){
 function recarregarDaNuvem(btn){
   if(!_token){return;}
   var orig=btn?btn.textContent:null;
+  if(_filaAtiva||_fila.length){alert('Ainda estou salvando os últimos dados na nuvem. Espere a faixa verde "Tudo salvo" e tente de novo.');return;}
   if(btn){btn.disabled=true;btn.textContent='⏳';}
+  var _seqAntes=_seqGrav;
   chamarPorta({action:'getAll',token:_token},
     function(res){
+      if(_seqGrav!==_seqAntes||_filaAtiva||_fila.length){if(btn){btn.disabled=false;btn.textContent='🔄';}return;}
       if(res&&res.ok){
         _allGlobal=res.global||_allGlobal;_allData=res.dados?agruparPorMes(res.dados):_allData;
         loadGlobal();loadData();renderAll();
@@ -2150,12 +2225,15 @@ function recarregarDaNuvem(btn){
 function autoRefreshVendas(){
   if(!_token)return;
   // Reenvia automaticamente o que falhou antes (ex: uma deleção que não foi à nuvem)
-  if(_filaRetry.length){try{reprocessarFalhas();}catch(e){}}
+  if(_filaRetry.length){try{reprocessarFalhas(true);}catch(e){}}
   // Só adia se há gravação EM ANDAMENTO ou pendente na fila principal (não trava por retry)
   if(_filaAtiva||_fila.length)return;
   if(document.querySelectorAll('.modal-overlay:not(.hidden)').length)return;
+  var _seqAntes=_seqGrav;
   chamarPorta({action:'getAll',token:_token},
     function(res){
+      // v38: se algo foi gravado enquanto a leitura viajava, a leitura esta velha — descarta.
+      if(_seqGrav!==_seqAntes||_filaAtiva||_fila.length)return;
       if(res&&res.ok){
         _allGlobal=res.global||_allGlobal;
         _allData=res.dados?agruparPorMes(res.dados):_allData;
@@ -3099,10 +3177,11 @@ function extrairVendedorDoNome(filename){
   // Remove extensão e prefixos comuns: OR_, ORC_, Orcamentos_, etc.
   let nome=filename.replace(/\.csv$/i,'').replace(/\.txt$/i,'');
   nome=nome.replace(/^(OR_|ORC_|Orc_|Orcamento_|Orcamentos_|Orc\.)/i,'');
-  nome=nome.replace(/_.*$/,''); // Pega só até o primeiro underscore restante
-  nome=nome.trim();
-  console.log(`[extrairVendedor] Arquivo="${filename}" → nome="${nome}"`);
-  return matchVendedor(nome);
+  // v38: OR_09_26_GISELY -> antes pegava "09" e recusava o arquivo. Agora testa cada pedaco
+  // que nao e numero, do ultimo para o primeiro.
+  var partes=nome.split(/[_\-\s]+/).map(function(x){return x.trim();}).filter(function(x){return x&&!/^\d+$/.test(x);});
+  for(var i=partes.length-1;i>=0;i--){var v=matchVendedor(partes[i]);if(v)return v;}
+  return partes.length?matchVendedor(partes.join(' ')):null;
 }
 
 function parseValorBROrc(valorRaw){
@@ -3161,28 +3240,36 @@ function importCSVOrcamentos(){
         const col={
           data:findC(['data','date','dt']),
           cliente:findC(['cliente','client','nome','descricao']),
-          valor:findC(['valor','value','total','preco'])
+          valor:findC(['valor','value','total','preco']),
+          vend:findC(['vendedor','vendedora','atendente']),
+          tel:findC(['telefone','fone','celular','whats'])
         };
-        const vendedor=extrairVendedorDoNome(file.name);
-        if(!vendedor){erros.push(file.name+': vendedor não reconhecido. Renomeie como OR_NomeVendedor.csv');processFile(index+1);return;}
+        // v38: o vendedor vem da coluna do proprio arquivo; o nome do arquivo e so reserva.
+        const vendArq=extrairVendedorDoNome(file.name);
+        const vendCol0=col.vend>=0&&lines[1]?matchVendedor((lines[1].split(sep)[col.vend]||'').trim().replace(/^"|"$/g,'')):null;
+        if(!vendArq&&!vendCol0){erros.push(file.name+': vendedor não reconhecido. Confira se ele está cadastrado em Equipe → Usuários (ou coloque o nome no arquivo, ex.: OR_09_26_GISELY.csv)');processFile(index+1);return;}
         for(let i=1;i<lines.length;i++){
           const r=lines[i].split(sep).map(function(x){return x.trim().replace(/^"|"$/g,'');});
           if(r.length<2)continue;
           const data=col.data>=0?(r[col.data]||'').trim():'';
           const cliente=col.cliente>=0?(r[col.cliente]||'').trim().replace(/\s*[-\u2013]\s*[\d\s()]+$/,'').trim():'';
           const valor=parseValorBROrc(col.valor>=0?r[col.valor]:'0');
-          if(!cliente||isNaN(valor)||valor<=0){totalIgnorados++;continue;}
+          const vendedor=(col.vend>=0&&r[col.vend]?matchVendedor(r[col.vend].trim()):null)||vendArq||vendCol0;
+          const tel=col.tel>=0?(r[col.tel]||'').trim():'';
+          if(!vendedor||!cliente||isNaN(valor)||valor<=0){totalIgnorados++;continue;}
           let dataISO=hojeISO();
           if(data){const pts=data.split('/');if(pts.length===3)dataISO=pts[2]+'-'+pts[1]+'-'+pts[0];}
           const existe=S.orcamentos.find(function(o){
             return normStr(o.vendedor)===normStr(vendedor)&&o.data===dataISO&&normStr(o.cliente)===normStr(cliente);
           });
           if(existe){
-            if(Math.abs((existe.valor||0)-valor)>0.01){existe.valor=valor;totalAtualizados++;}
-            else{totalIgnorados++;}
+            var _mud=false;
+            if(Math.abs((existe.valor||0)-valor)>0.01){existe.valor=valor;_mud=true;}
+            if(tel&&!existe.tel){existe.tel=tel;_mud=true;}
+            if(_mud)totalAtualizados++;else totalIgnorados++;
           }else{
             const numOrc='ORC-'+dataISO.replace(/-/g,'')+'-'+String(seqGlobal).padStart(3,'0');
-            S.orcamentos.push({id:novoIdNum(),num:numOrc,cliente:cliente,tel:'',valor:valor,vendedor:vendedor,data:dataISO,status:'aberto',os:null});
+            S.orcamentos.push({id:novoIdNum(),num:numOrc,cliente:cliente,tel:tel,valor:valor,vendedor:vendedor,data:dataISO,status:'aberto',os:null});
             seqGlobal++;totalNovos++;
           }
         }
@@ -3233,7 +3320,7 @@ function importCSV(){
       const r=lines[i].split(sep).map(x=>x.trim().replace(/^"|"$/g,''));
       if(r.length<3){linhasIgnoradas++;continue;}
       
-      const data=(r[col.data]||'').trim()||hojeISO();
+      const data=rvDataISO((r[col.data]||'').trim())||hojeISO();
       const os=(r[col.os]||'').trim().toUpperCase();
       const cliente=(r[col.cliente]||'').trim();
       
@@ -3291,7 +3378,7 @@ function importCSV(){
       } else {
         // Nova OS → inserir
         S.vendas.push(venda);
-        if(!S.posvenda[osBase(os)])S.posvenda[osBase(os)]={};
+        // v38: nao cria pos-venda vazio na importacao (dobrava as gravacoes); ele nasce quando for preenchido
         count++;
       }
     }
