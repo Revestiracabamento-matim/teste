@@ -1071,9 +1071,9 @@ body.rv-lateral #rvSub{display:flex}
         <div class="big-card-sub" id="vd-posicao-sub">de 0 vendedores</div>
       </div>
       <div class="big-card big-card-orange">
-        <div class="big-card-lbl">📊 Distância para o 1º lugar</div>
+        <div class="big-card-lbl">🧾 Minhas vendas novas no mês</div>
         <div class="big-card-val" id="vd-gap">—</div>
-        <div class="big-card-sub" id="vd-gap-sub">para alcançar o topo</div>
+        <div class="big-card-sub" id="vd-gap-sub">—</div>
       </div>
     </div>
 
@@ -1865,6 +1865,10 @@ function entrarNoApp(){
     // v32: o menu novo manda — monta DEPOIS do reset e abre a Visao geral
     try{ rvMontarMenu(); }catch(e){ console.error('rvMontarMenu:',e); }
   }else{
+    // v40 COFRE: menu lateral e telas da gestao sao so do admin
+    document.body.classList.remove('rv-lateral');
+    var _rvN=document.getElementById('rvNav');if(_rvN)_rvN.style.display='none';
+    var _rvS=document.getElementById('rvSub');if(_rvS){_rvS.innerHTML='';_rvS.style.display='none';}
     document.getElementById('adminTabs').classList.add('hidden');
     document.getElementById('vendTabs').classList.remove('hidden');
     document.querySelectorAll('#vendTabs .tab-btn').forEach(function(b,i){b.classList.toggle('active',i===0);});
@@ -1878,6 +1882,9 @@ function entrarNoApp(){
 }
 
 function logout(){
+  // v40: com gravacao pendente, nao sai (senao perde o que ainda esta indo para a nuvem)
+  if(_filaAtiva||_fila.length){alert('Ainda estou salvando na nuvem. Espere a faixa verde "Tudo salvo" e clique em Sair de novo.');return;}
+  if(_filaRetry.length&&!confirm('Há registros que NÃO foram salvos na nuvem (faixa vermelha). Se sair agora, eles se perdem. Sair mesmo assim?'))return;
   me=null;_token=null;_allData=null;_allGlobal=null;_snapS=null;_snapG=null;
   _fila=[];_filaRetry=[];_filaAtiva=false;_avisouVendedor=false;
   if(window._refV){clearInterval(window._refV);window._refV=null;}
@@ -1890,6 +1897,10 @@ function logout(){
   document.getElementById('loginErr').textContent='';
   // Limpa inputs de arquivo para nao vazar dados entre sessoes de vendedores diferentes
   ['csvFile','orcCsvFile','vorcCsvFile'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  // v40 COFRE: recarrega a pagina do zero. Antes, quem entrava depois do admin (mesmo computador)
+  // herdava o menu lateral e os numeros da gestao que ficavam na tela.
+  document.body.classList.remove('rv-lateral');
+  try{_filaRetry=[];window.location.reload();}catch(e){}
 }
 
 // ===== STORAGE — NUVEM (FATIA 2: diff + saveRow) =====
@@ -2273,9 +2284,9 @@ function renderVendDashboard(){
   const total=my.reduce((s,v)=>s+v.valor,0);
   const orcAbertoVal=myOrcAbertos.reduce((s,o)=>s+o.valor,0);
   const qtd=my.length;
-  const ticket=qtd>0?total/qtd:0;
+  const ticket=rvVendasNovas([currentMonth]).ticket; // v40: ticket da venda inteira (somando as parcelas), so dele
   document.getElementById('vd-vendas').textContent=fmtShort(total);
-  document.getElementById('vd-vendas-qtd').textContent=qtd+' venda'+(qtd!==1?'s':'');
+  document.getElementById('vd-vendas-qtd').textContent=qtd+' recebimento'+(qtd!==1?'s':'')+' no mês';
   document.getElementById('vd-orc-abertos').textContent=fmtShort(orcAbertoVal);
   document.getElementById('vd-orc-abertos-qtd').textContent=myOrcAbertos.length+' orçamento'+(myOrcAbertos.length!==1?'s':'');
   document.getElementById('vd-ticket').textContent=fmt(ticket);
@@ -2315,15 +2326,15 @@ function renderVendDashboard(){
   if(_rk&&_rk.pos){
     var medalha=_rk.pos===1?'🥇 1º':_rk.pos===2?'🥈 2º':_rk.pos===3?'🥉 3º':_rk.pos+'º';
     if(posEl)posEl.textContent=medalha;
-    if(posSubEl)posSubEl.textContent='de '+_rk.n+' vendedores com vendas';
-    if(_rk.pos===1){if(gapEl)gapEl.textContent='🏆';if(gapSubEl)gapSubEl.textContent='Você lidera o ranking!';}
-    else{if(gapEl)gapEl.textContent=fmtShort(_rk.gap);if(gapSubEl)gapSubEl.textContent='a mais para você assumir o 1º lugar';}
+    if(posSubEl)posSubEl.textContent=_rk.pos===1?'Você lidera a equipe neste mês':'sua posição na equipe neste mês';
   }else{
     if(posEl)posEl.textContent='—';
     if(posSubEl)posSubEl.textContent='sem vendas neste mês ainda';
-    if(gapEl)gapEl.textContent='—';
-    if(gapSubEl)gapSubEl.textContent='registre sua primeira venda';
   }
+  // v40 COFRE: a "distancia para o 1o lugar" em R$ entregava o faturamento do colega. Agora so dados DELE.
+  var _vnV=rvVendasNovas([currentMonth]);
+  if(gapEl)gapEl.textContent=_vnV.qtd;
+  if(gapSubEl)gapSubEl.textContent=_vnV.parcelas?('+ '+_vnV.parcelas+' parcela'+(_vnV.parcelas===1?'':'s')+' de vendas anteriores'):'O.S. que entraram neste mês';
   // Diagnostico: se zero vendas, mostra o nome usado no filtro para facilitar identificar mismatch
   var _myV=S.vendas.filter(function(v){return normStr(v.vendedor)===normStr(me.name);});
   var _diagEl=document.getElementById('vd-diagNome');
