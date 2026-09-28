@@ -611,7 +611,7 @@ body.rv-lateral #rvSub{display:flex}
     </div>
     <div class="card">
       <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center"><h3 class="card-title">Orçamentos Abertos</h3><button class="btn btn-sm btn-danger" onclick="dedupOrcamentos()" title="Remove cópias do mesmo orçamento (cliente+data+vendedor), mantendo 1">🧹 Limpar duplicados</button></div>
-      <div class="filter-row"><input type="text" id="orcFilter" class="filter-input" placeholder="Buscar cliente ou nº..." onkeyup="renderFunil()"><select id="orcVendFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os vendedores</option></select></div>
+      <div class="filter-row"><input type="text" id="orcFilter" class="filter-input" placeholder="Buscar cliente ou nº..." onkeyup="renderFunil()"><select id="orcVendFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os vendedores</option></select><select id="orcOrigFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos em aberto (carteira)</option><option value="mes">Só feitos neste mês</option><option value="antes">Só de meses anteriores</option></select></div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>📍</th><th>Data</th><th>Nº ORC</th><th>Cliente</th><th>Vendedor</th><th>Valor</th><th>Dias</th><th>Ações</th></tr></thead>
         <tbody id="tbOrcs"><tr><td class="empty-row" colspan="7">Nenhum</td></tr></tbody>
@@ -2024,6 +2024,14 @@ function _delRow(meta,row,incluiMes){var r={};r[meta.chave]=row[meta.chave];r._d
 // ----- agruparPorMes: a porta devolve arrays PLANOS (com campo .mes em cada linha);
 //       o dashboard trabalha por mês (_allData[mes].vendas). Converte um no outro. -----
 // v38: aceita 26/05/2026, 2026-05-26 e 2026-05-26T03:00:00.000Z — devolve sempre 2026-05-26.
+// v41 CARTEIRA: orcamentos em aberto e bonificacoes a pagar de meses anteriores aparecem no mes atual
+// marcados com _de (mes de origem). Continuam gravados no MES DE ORIGEM — nao inflam o mes atual.
+var _MES_NUM={janeiro:'01',fevereiro:'02',marco:'03',abril:'04',maio:'05',junho:'06',julho:'07',agosto:'08',setembro:'09',outubro:'10',novembro:'11',dezembro:'12'};
+function rvMesISO(m){var p=String(m||'').split('_');return (p[1]||'')+'-'+(_MES_NUM[p[0]]||'00');}
+function _doMes(x){return !!x&&!x._de;}
+function rvConvNoMes(o){return o&&o.status==='convertido'&&(!o._de||String(rvDataISO(o.dataConv)).slice(0,7)===rvMesISO(currentMonth));}
+function rvTagMes(m){if(!m)return '';var p=String(m).split('_');var ab={janeiro:'jan',fevereiro:'fev',marco:'mar',abril:'abr',maio:'mai',junho:'jun',julho:'jul',agosto:'ago',setembro:'set',outubro:'out',novembro:'nov',dezembro:'dez'};
+  return ' <span class="badge" title="Veio de um mês anterior — continua contando no mês de origem" style="background:#E6F4F3;color:#07514E;font-size:10px">de '+(ab[p[0]]||p[0])+'/'+String(p[1]||'').slice(2)+'</span>';}
 function rvDataISO(v){
   if(v===undefined||v===null)return '';
   var t=String(v).trim(); if(!t)return '';
@@ -2034,7 +2042,7 @@ function rvDataISO(v){
   return t;
 }
 function agruparPorMes(dadosPlanos){
-  ['vendas','orcamentos'].forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(r&&r.data)r.data=rvDataISO(r.data);});});
+  ['vendas','orcamentos'].forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(r&&r.data)r.data=rvDataISO(r.data);if(r&&r.dataConv)r.dataConv=rvDataISO(r.dataConv);});});
   // v38: o Sheets transforma 5000 (texto) em numero. Sem isto, apagar/reimportar nao achava a O.S. e a tela quebrava.
   var _txt={vendas:['os','cliente','vendedor'],orcamentos:['os','num','cliente','vendedor','tel'],pedidos:['os','cliente'],indicacoes:['os','venda'],posvenda:['osBase'],bonificacoes:['numVenda','vendedor']};
   Object.keys(_txt).forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(!r)return;_txt[tab].forEach(function(c){if(r[c]!==undefined&&r[c]!==null&&r[c]!==''&&typeof r[c]!=='string')r[c]=String(r[c]);});});});
@@ -2102,11 +2110,29 @@ function loadData(){
   if(!_allData||!_allData[currentMonth]){S=Object.assign({},vazio);_snapS=deepClone(S);return;}
   var d=_allData[currentMonth];
   S=Object.assign({},vazio,d);
-  ['vendas','orcamentos','pedidos','indicacoes','rtpagtos','bonificacoes','entregas'].forEach(function(k){if(!S[k])S[k]=[];});
+  // v41: copia as listas — antes o S apontava para o MESMO array do cache do mes, e o que era trazido de
+  // meses anteriores (pedido, entrega, orcamento) ia parar dentro do mes atual e era contado duas vezes.
+  ['vendas','orcamentos','pedidos','indicacoes','rtpagtos','bonificacoes','entregas'].forEach(function(k){S[k]=(S[k]||[]).slice();});
   if(!S.posvenda)S.posvenda={};
   // ROLLOVER: trazer itens nao concluidos de meses anteriores
   var _ci=MONTHS.indexOf(currentMonth);
   if(_ci>0&&_allData){
+    // v41 CARTEIRA (ficam no mes de origem; so aparecem aqui)
+    var _orcIds={};S.orcamentos.forEach(function(o){_orcIds[o.id]=true;});
+    var _bnIds={};S.bonificacoes.forEach(function(b){_bnIds[b.id]=true;});
+    var _mIso=rvMesISO(currentMonth);
+    for(var _mo=0;_mo<_ci;_mo++){
+      var _dmo=_allData[MONTHS[_mo]];if(!_dmo)continue;
+      (_dmo.orcamentos||[]).forEach(function(o){
+        if(!o||_orcIds[o.id])return;
+        var leva=(o.status==='aberto'||o.status==='negociacao')||(o.status==='convertido'&&String(rvDataISO(o.dataConv)).slice(0,7)===_mIso);
+        if(leva){var c=deepClone(o);c._de=MONTHS[_mo];S.orcamentos.push(c);_orcIds[o.id]=true;}
+      });
+      (_dmo.bonificacoes||[]).forEach(function(b){
+        if(!b||_bnIds[b.id]||b.status==='Pago')return;
+        var c=deepClone(b);c._de=MONTHS[_mo];S.bonificacoes.push(c);_bnIds[b.id]=true;
+      });
+    }
     var _pedIds={};S.pedidos.forEach(function(p){_pedIds[p.id]=true;});
     var _rtProfs={};S.rtpagtos.forEach(function(r){_rtProfs[r.prof]=true;});
     var _entIds={};S.entregas.forEach(function(e){_entIds[e.id]=true;});
@@ -2140,6 +2166,23 @@ function saveData(){
   if(!_token){console.warn('[saveData] sem token — ignorado');return;}
   var antes=_snapS, agora=S;
   _allData[currentMonth]=deepClone(S); // cache sempre coerente com a UI
+  // v41: itens da carteira (vindos de meses anteriores) voltam para o cache do mes de origem
+  ['orcamentos','bonificacoes'].forEach(function(tab){
+    var noMes=[];
+    (S[tab]||[]).forEach(function(x){
+      if(!x||!x._de){noMes.push(deepClone(x));return;}
+      var dm=_allData[x._de];if(!dm)return;if(!dm[tab])dm[tab]=[];
+      var c=deepClone(x);delete c._de;
+      var i=dm[tab].findIndex(function(y){return String(y.id)===String(x.id);});
+      if(i>=0)dm[tab][i]=c;else dm[tab].push(c);
+    });
+    _allData[currentMonth][tab]=noMes;
+  });
+  // item da carteira apagado aqui: sai tambem do cache do mes de origem
+  if(antes){['orcamentos','bonificacoes'].forEach(function(tab){
+    var ids={};(S[tab]||[]).forEach(function(x){if(x)ids[String(x.id)]=true;});
+    (antes[tab]||[]).forEach(function(x){if(x&&x._de&&!ids[String(x.id)]&&_allData[x._de]){_allData[x._de][tab]=(_allData[x._de][tab]||[]).filter(function(y){return String(y.id)!==String(x.id);});}});
+  });}
   if(antes){
     // v38: o admin grava o mes inteiro em LOTE (1 chamada a cada 150 linhas).
     // Antes era 1 chamada por linha: 220 vendas = 20 a 40 min, e fechar a pagina perdia o resto.
@@ -2147,7 +2190,7 @@ function saveData(){
     Object.keys(TABELAS_S).forEach(function(nome){
       var meta=TABELAS_S[nome];
       var d=diffTabela(meta,agora[nome],antes[nome]);
-      var ups=d.upserts.map(function(row){var r=Object.assign({},row);r.mes=currentMonth;return r;});
+      var ups=d.upserts.map(function(row){var r=Object.assign({},row);r.mes=row._de||currentMonth;delete r._de;return r;}); // v41: carteira grava no mes de origem
       if(_lote&&ups.length){
         for(var i=0;i<ups.length;i+=150)enfileirar({_lote:true,sheet:meta.sheet,rows:ups.slice(i,i+150)});
       }else{
@@ -2158,12 +2201,12 @@ function saveData(){
       d.deletes.forEach(function(row){
         var valor=row[campo];
         if(valor===undefined||valor===null||valor===''){console.warn('[delete] sem chave-da-porta — ignorado p/ não corromper',meta.sheet,row);return;}
-        var it={};it[campo]=valor;it.mes=currentMonth;dels.push(it);
+        var it={};it[campo]=valor;it.mes=row._de||currentMonth;dels.push(it);
       });
       if(_lote&&dels.length){
         for(var j=0;j<dels.length;j+=150)enfileirar({_delLote:true,sheet:meta.sheet,itens:dels.slice(j,j+150)});
       }else{
-        dels.forEach(function(it){enfileirarDelete(meta.sheet,it[campo],currentMonth);});
+        dels.forEach(function(it){enfileirarDelete(meta.sheet,it[campo],it.mes);});
       }
     });
     if(String(agora.meta)!==String(antes.meta)){
@@ -2279,8 +2322,8 @@ function tab(btn,id){
 function renderVendDashboard(){
   const my=S.vendas.filter(v=>normStr(v.vendedor)===normStr(me.name));
   const myOrcs=S.orcamentos.filter(o=>normStr(o.vendedor)===normStr(me.name));
-  const myOrcAbertos=myOrcs.filter(o=>o.status==='aberto'||o.status==='negociacao');
-  const myOrcConv=myOrcs.filter(o=>o.status==='convertido');
+  const myOrcAbertos=myOrcs.filter(o=>o.status==='aberto'||o.status==='negociacao'); // v41: carteira inteira
+  const myOrcConv=myOrcs.filter(rvConvNoMes);
   const total=my.reduce((s,v)=>s+v.valor,0);
   const orcAbertoVal=myOrcAbertos.reduce((s,o)=>s+o.valor,0);
   const qtd=my.length;
@@ -2292,8 +2335,8 @@ function renderVendDashboard(){
   document.getElementById('vd-ticket').textContent=fmt(ticket);
   document.getElementById('vd-orccount').textContent=myOrcAbertos.length;
   document.getElementById('vd-convcount').textContent=myOrcConv.length;
-  document.getElementById('vd-perdcount').textContent=myOrcs.filter(o=>o.status==='perdido').length;
-  const orcTotV=myOrcs.length,orcConvV=myOrcConv.length;const txElV=document.getElementById('vd-txconv');if(txElV)txElV.textContent=orcTotV>0?Math.round(orcConvV/orcTotV*100)+'%':'—';const pvAberto=my.filter(v=>!S.posvenda[osBase(v.os)]||!(S.posvenda[osBase(v.os)].fotoStatus==='coletada'&&S.posvenda[osBase(v.os)].avalStatus==='coletada'&&S.posvenda[osBase(v.os)].follow30==='realizado')).length;const pvEl=document.getElementById('vd-pvaberto');if(pvEl)pvEl.textContent=pvAberto;const pvIdx=calcIndicePosvenda(me.name);const pvMin=getPvMinPct();const pvIdxEl=document.getElementById('vd-pvidx');const pvIdxSub=document.getElementById('vd-pvidx-sub');if(pvIdxEl){pvIdxEl.textContent=pvIdx+'%';pvIdxEl.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}if(pvIdxSub){pvIdxSub.textContent=pvIdx>=pvMin?'✅ Elegível':'⚠️ Mín: '+pvMin+'% | Atual: '+pvIdx+'%';pvIdxSub.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}
+  document.getElementById('vd-perdcount').textContent=myOrcs.filter(o=>_doMes(o)&&o.status==='perdido').length;
+  const _myCoorte=myOrcs.filter(_doMes);const orcTotV=_myCoorte.length,orcConvV=_myCoorte.filter(o=>o.status==='convertido').length;const txElV=document.getElementById('vd-txconv');if(txElV)txElV.textContent=orcTotV>0?Math.round(orcConvV/orcTotV*100)+'%':'—';const pvAberto=my.filter(v=>!S.posvenda[osBase(v.os)]||!(S.posvenda[osBase(v.os)].fotoStatus==='coletada'&&S.posvenda[osBase(v.os)].avalStatus==='coletada'&&S.posvenda[osBase(v.os)].follow30==='realizado')).length;const pvEl=document.getElementById('vd-pvaberto');if(pvEl)pvEl.textContent=pvAberto;const pvIdx=calcIndicePosvenda(me.name);const pvMin=getPvMinPct();const pvIdxEl=document.getElementById('vd-pvidx');const pvIdxSub=document.getElementById('vd-pvidx-sub');if(pvIdxEl){pvIdxEl.textContent=pvIdx+'%';pvIdxEl.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}if(pvIdxSub){pvIdxSub.textContent=pvIdx>=pvMin?'✅ Elegível':'⚠️ Mín: '+pvMin+'% | Atual: '+pvIdx+'%';pvIdxSub.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}
   // COFRE: o vendedor NUNCA vê a meta da loja nem o nº de vendedores (senão deduz o faturamento total).
   // O alvo dele é a PRÓXIMA FAIXA de premiação — meta 100% individual.
   const _faixasV=getFaixasAtivas();
@@ -2459,7 +2502,7 @@ function renderRelatorio(){
   
   // Calcular bonificações por vendedor
   const bnMap={};
-  S.bonificacoes.forEach(b=>{
+  S.bonificacoes.filter(_doMes).forEach(b=>{
     if(!bnMap[b.vendedor])bnMap[b.vendedor]=0;
     bnMap[b.vendedor]+=(b.valorPagar||0);
   });
@@ -2520,7 +2563,7 @@ function exportRelatorio(){
   const vendMap={};
   S.vendas.forEach(v=>{if(!vendMap[v.vendedor])vendMap[v.vendedor]={total:0,qtd:0};vendMap[v.vendedor].total+=v.valor;vendMap[v.vendedor].qtd++;});
   const bnMap={};
-  S.bonificacoes.forEach(b=>{if(!bnMap[b.vendedor])bnMap[b.vendedor]=0;bnMap[b.vendedor]+=(b.valorPagar||0);});
+  S.bonificacoes.filter(_doMes).forEach(b=>{if(!bnMap[b.vendedor])bnMap[b.vendedor]=0;bnMap[b.vendedor]+=(b.valorPagar||0);});
   const totalLoja=Object.values(vendMap).reduce((s,d)=>s+d.total,0);
   const metaOk=totalLoja>=getMetaColetiva();
   let csv='Vendedor;Faturamento;Faixa;Percentual;Premio Individual;Bonus Coletivo;Bonificacoes;Total a Pagar\n';
@@ -2711,10 +2754,10 @@ function renderDash(){
   document.getElementById('m-ticket').textContent=fmt(qtd>0?total/qtd:0);
   document.getElementById('m-orcabertos').textContent=orcAbertos;
   document.getElementById('m-pvpend').textContent=pvPend;
-  const orcTot=S.orcamentos.length,orcConv=S.orcamentos.filter(o=>o.status==='convertido').length;const txEl=document.getElementById('m-txconv');if(txEl)txEl.textContent=orcTot>0?Math.round(orcConv/orcTot*100)+'%':'—';
+  const _cMes=S.orcamentos.filter(_doMes);const orcTot=_cMes.length,orcConv=_cMes.filter(o=>o.status==='convertido').length;const txEl=document.getElementById('m-txconv');if(txEl)txEl.textContent=orcTot>0?Math.round(orcConv/orcTot*100)+'%':'—';
   // Breakdown por tipo de conversão
   const convPorTipo={};
-  S.orcamentos.filter(o=>o.status==='convertido'&&o.conversao).forEach(o=>{convPorTipo[o.conversao]=(convPorTipo[o.conversao]||0)+1;});
+  S.orcamentos.filter(o=>rvConvNoMes(o)&&o.conversao).forEach(o=>{convPorTipo[o.conversao]=(convPorTipo[o.conversao]||0)+1;});
   const ctEl=document.getElementById('m-convtipos');
   if(ctEl){const partes=Object.entries(convPorTipo).map(([k,v])=>{const ab=k.replace('Venda ','');return v+' '+ab;});ctEl.textContent=partes.length?partes.join(' • '):'tipos não informados';}
   // agrupar por vendedor
@@ -2997,11 +3040,16 @@ function gerarTodasEntregas(){
 
 // ===== FUNIL / ORÇAMENTOS =====
 function renderFunil(){
-  const ab=S.orcamentos.filter(o=>o.status==='aberto'||o.status==='negociacao');
-  const conv=S.orcamentos.filter(o=>o.status==='convertido');
-  const perd=S.orcamentos.filter(o=>o.status==='perdido');
-  const tot=S.orcamentos.length;
-  const taxa=tot>0?Math.round(conv.length/tot*100):0;
+  // v41: EM ABERTO = carteira inteira (este mes + meses anteriores). CONVERTIDOS = fechados neste mes,
+  // inclusive de orcamento antigo. TAXA = dos orcamentos feitos neste mes (nao mistura meses).
+  const _orig=((document.getElementById('orcOrigFilter')||{}).value||'');
+  let ab=S.orcamentos.filter(o=>o.status==='aberto'||o.status==='negociacao');
+  if(_orig==='mes')ab=ab.filter(_doMes);else if(_orig==='antes')ab=ab.filter(o=>o._de);
+  const conv=S.orcamentos.filter(rvConvNoMes);
+  const _coorte=S.orcamentos.filter(_doMes);
+  const perd=_coorte.filter(o=>o.status==='perdido');
+  const tot=_coorte.length;
+  const taxa=tot>0?Math.round(_coorte.filter(o=>o.status==='convertido').length/tot*100):0;
   const valAb=ab.reduce((s,o)=>s+o.valor,0);
   const valConv=conv.reduce((s,o)=>s+o.valor,0);
   document.getElementById('f-abertos').textContent=ab.length;
@@ -3017,14 +3065,14 @@ function renderFunil(){
     const dias=Math.floor((Date.now()-dataMs(o.data))/86400000);
     const sem=dias>30?'semafor-red':dias>15?'semafor-yellow':'semafor-green';
     const stBadge=o.status==='negociacao'?'<span class="badge b-yellow">Negociação</span>':'';
-    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong> ${stBadge}</td><td>${o.vendedor}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td><button class="btn btn-sm btn-teal" onclick="openConvModal(${o.id})">Converter</button> <button class="btn btn-sm btn-ghost" onclick="openEtapaModal(${o.id})">Status</button> <button class="btn btn-sm btn-danger" onclick="delOrcAdmin(${o.id})">Excluir</button></td></tr>`;
+    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong> ${stBadge}${rvTagMes(o._de)}</td><td>${o.vendedor}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td><button class="btn btn-sm btn-teal" onclick="openConvModal(${o.id})">Converter</button> <button class="btn btn-sm btn-ghost" onclick="openEtapaModal(${o.id})">Status</button> <button class="btn btn-sm btn-danger" onclick="delOrcAdmin(${o.id})">Excluir</button></td></tr>`;
   }).join(''):'<tr><td class="empty-row" colspan="8">Nenhum</td></tr>';
   document.getElementById('tbOrcsConv').innerHTML=(function(){
     let convF=conv.filter(o=>(o.cliente||'').toLowerCase().includes(filter)||(o.num||'').toString().toLowerCase().includes(filter));
     if(fVend)convF=convF.filter(o=>normStr(o.vendedor)===normStr(fVend));
     return convF.length?convF.map(o=>{
     const venda=o.os?S.vendas.find(v=>v.os===o.os):null;
-    return `<tr><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong></td><td>${o.vendedor||'-'}</td><td>${fmt(o.valor)}</td><td><code>${o.os||'—'}</code></td><td>${venda?`<span class="badge b-green">✅ ${fmt(venda.valor)}</span>`:'<span class="badge b-orange">Aguardando importação</span>'}</td><td><button class="btn btn-sm btn-danger" onclick="delOrcAdmin(${o.id})">Excluir</button></td></tr>`;
+    return `<tr><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong>${rvTagMes(o._de)}</td><td>${o.vendedor||'-'}</td><td>${fmt(o.valor)}</td><td><code>${o.os||'—'}</code></td><td>${venda?`<span class="badge b-green">✅ ${fmt(venda.valor)}</span>`:'<span class="badge b-orange">Aguardando importação</span>'}</td><td><button class="btn btn-sm btn-danger" onclick="delOrcAdmin(${o.id})">Excluir</button></td></tr>`;
   }).join(''):'<tr><td class="empty-row" colspan="7">Nenhum</td></tr>';})();
 }
 // MODAL CONVERTER (substitui prompt bloqueado)
@@ -3048,8 +3096,8 @@ function saveEtapa(){
   closeEtapaModal();
 }
 function dedupOrcamentos(){
-  var grupos={};
-  S.orcamentos.forEach(function(o){
+  var grupos={},_carteira=S.orcamentos.filter(function(o){return o._de;});
+  S.orcamentos.filter(_doMes).forEach(function(o){
     var k=normStr(o.vendedor)+'|'+(o.data||'')+'|'+normStr(o.cliente);
     if(!grupos[k])grupos[k]=[];
     grupos[k].push(o);
@@ -3066,7 +3114,7 @@ function dedupOrcamentos(){
   });
   if(removidos===0){alert('Nenhum orçamento duplicado encontrado neste mês. ✅');return;}
   if(!confirm('Foram encontrados '+removidos+' orçamento(s) duplicado(s) neste mês.\n\nRemover as cópias e manter 1 de cada (cliente + data + vendedor)?\nOs convertidos em venda são preservados.'))return;
-  S.orcamentos=manter;
+  S.orcamentos=manter.concat(_carteira);
   saveData();renderAll();
   alert('✅ '+removidos+' duplicata(s) removida(s). A nuvem foi atualizada.');
 }
@@ -3215,7 +3263,7 @@ function gerarNumOrc(data,seq){
 
 function limparOrcMes(){
   if(!confirm('Apagar todos os orçamentos importados? Orçamentos lançados manualmente também serão removidos.'))return;
-  S.orcamentos=[];saveData();renderAll();
+  S.orcamentos=S.orcamentos.filter(function(o){return o._de;});saveData();renderAll(); // v41: nao apaga a carteira de meses anteriores
   document.getElementById('orcImportMsg').innerHTML='<div class="alert">✅ Orçamentos apagados. Reimporte os arquivos.</div>';
 }
 
@@ -3468,7 +3516,7 @@ function limparBonifMes(){
   if(me.role!=='admin')return;
   if(!confirm('⚠️ ATENÇÃO: Isso vai apagar TODAS as bonificações do mês '+currentMonth.replace('_',' ')+'.\n\nConfirma?'))return;
   if(!confirm('Tem certeza? Esta ação não pode ser desfeita.'))return;
-  S.bonificacoes=[];saveData();renderAll();
+  S.bonificacoes=S.bonificacoes.filter(function(b){return b._de;});saveData();renderAll(); // v41: so as do mes
 }
 function limparFornsTodos(){
   if(me.role!=='admin')return;
@@ -3778,7 +3826,7 @@ function closeRTModal(){document.getElementById('rtModal').classList.add('hidden
 function saveRT(){const prof=document.getElementById('rtProf').value;const status=document.getElementById('rtStatus').value;const data=document.getElementById('rtData').value;const idRT=currentMonth+'|'+prof;const i=S.rtpagtos.findIndex(r=>r.prof===prof);if(i===-1)S.rtpagtos.push({id:idRT,prof,status,data});else S.rtpagtos[i]={...S.rtpagtos[i],id:idRT,prof,status,data};saveData();renderAll();closeRTModal();}
 
 // ===== EXPORTAR =====
-function exportCSV(tipo){let csv='',fn='';if(tipo==='orcamentos'){csv='Num,Cliente,Telefone,Vendedor,Valor,Status,OS\n';S.orcamentos.forEach(o=>csv+=`"${o.num||''}","${o.cliente}","${o.tel||''}","${o.vendedor}",${o.valor},"${o.status}","${o.os||''}"\n`);fn='orcamentos.csv';}else if(tipo==='pedidos'){csv='Data,Produto,QtdSolicitada,QtdComprada,Cliente,Fornecedor,OS,Status,Ocorrencia,Pgto,DataPgto,Forma\n';S.pedidos.forEach(p=>csv+=`"${p.data}","${p.produto}","${p.qtd}","${p.qtdComp||''}","${p.cliente}","${p.fornecedor}","${p.os}","${p.status}","${p.ocorrencia}","${p.pgtStatus}","${p.pgtData}","${p.pgtForma}"\n`);fn='pedidos.csv';}else if(tipo==='posvenda'){csv='OS,Cliente,Vendedor,Foto,Avaliacao,F3,F15,F30,Profissional\n';S.vendas.forEach(v=>{const pv=S.posvenda[osBase(v.os)]||{};csv+=`"${v.os}","${v.cliente}","${v.vendedor}","${pv.fotoStatus||'-'}","${pv.avalNota||'-'}","${pv.follow3||'-'}","${pv.follow15||'-'}","${pv.follow30||'-'}","${pv.profNome||'-'}"\n`;});fn='posvenda.csv';}else if(tipo==='vendas'){csv='Data,Vendedor,OS,Cliente,Valor\n';S.vendas.forEach(v=>csv+=`"${v.data}","${v.vendedor}","${v.os}","${v.cliente}",${v.valor}\n`);fn='vendas.csv';}const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=fn;document.body.appendChild(link);link.click();document.body.removeChild(link);document.getElementById('exportMsg').innerHTML=`<div class="alert">✅ ${fn} baixado!</div>`;setTimeout(()=>document.getElementById('exportMsg').innerHTML='',3000);}
+function exportCSV(tipo){let csv='',fn='';if(tipo==='orcamentos'){csv='Num,Cliente,Telefone,Vendedor,Valor,Status,OS\n';S.orcamentos.filter(_doMes).forEach(o=>csv+=`"${o.num||''}","${o.cliente}","${o.tel||''}","${o.vendedor}",${o.valor},"${o.status}","${o.os||''}"\n`);fn='orcamentos.csv';}else if(tipo==='pedidos'){csv='Data,Produto,QtdSolicitada,QtdComprada,Cliente,Fornecedor,OS,Status,Ocorrencia,Pgto,DataPgto,Forma\n';S.pedidos.forEach(p=>csv+=`"${p.data}","${p.produto}","${p.qtd}","${p.qtdComp||''}","${p.cliente}","${p.fornecedor}","${p.os}","${p.status}","${p.ocorrencia}","${p.pgtStatus}","${p.pgtData}","${p.pgtForma}"\n`);fn='pedidos.csv';}else if(tipo==='posvenda'){csv='OS,Cliente,Vendedor,Foto,Avaliacao,F3,F15,F30,Profissional\n';S.vendas.forEach(v=>{const pv=S.posvenda[osBase(v.os)]||{};csv+=`"${v.os}","${v.cliente}","${v.vendedor}","${pv.fotoStatus||'-'}","${pv.avalNota||'-'}","${pv.follow3||'-'}","${pv.follow15||'-'}","${pv.follow30||'-'}","${pv.profNome||'-'}"\n`;});fn='posvenda.csv';}else if(tipo==='vendas'){csv='Data,Vendedor,OS,Cliente,Valor\n';S.vendas.forEach(v=>csv+=`"${v.data}","${v.vendedor}","${v.os}","${v.cliente}",${v.valor}\n`);fn='vendas.csv';}const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=fn;document.body.appendChild(link);link.click();document.body.removeChild(link);document.getElementById('exportMsg').innerHTML=`<div class="alert">✅ ${fn} baixado!</div>`;setTimeout(()=>document.getElementById('exportMsg').innerHTML='',3000);}
 
 // ===== VENDEDOR (visão própria) =====
 function renderVendVendas(){
@@ -3836,7 +3884,7 @@ function renderVendOrcs(){
   document.getElementById('voOrcs').innerHTML=my.length?my.map(o=>{
     const dias=Math.floor((Date.now()-dataMs(o.data))/86400000);
     const sem=o.status==='convertido'?'semafor-green':dias>30?'semafor-red':dias>15?'semafor-yellow':'semafor-green';
-    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong></td><td>${fmt(o.valor)}</td><td>${dias}d</td><td>${o.os?`<code>${o.os}</code>`:'<span style="color:var(--muted)">—</span>'}</td><td>${o.conversao?`<span class="badge b-blue">${o.conversao}</span>`:'<span style="color:var(--muted)">—</span>'}</td><td><button class="btn btn-sm btn-ghost" onclick="openOrcVendModal(${o.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="delOrcVend(${o.id})">Excluir</button></td></tr>`;
+    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong>${rvTagMes(o._de)}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td>${o.os?`<code>${o.os}</code>`:'<span style="color:var(--muted)">—</span>'}</td><td>${o.conversao?`<span class="badge b-blue">${o.conversao}</span>`:'<span style="color:var(--muted)">—</span>'}</td><td><button class="btn btn-sm btn-ghost" onclick="openOrcVendModal(${o.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="delOrcVend(${o.id})">Excluir</button></td></tr>`;
   }).join(''):'<tr><td class="empty-row" colspan="9">Nenhum encontrado</td></tr>';
 }
 function fmtDataBR(iso){if(!iso)return'-';var s=String(iso).slice(0,10);var p=s.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:String(iso).slice(0,10);}
@@ -3966,17 +4014,19 @@ function renderBonif(){
   if(filter)list=list.filter(b=>b.vendedor.toLowerCase().includes(filter)||(b.numVenda||'').toLowerCase().includes(filter)||(b.produto||'').toLowerCase().includes(filter));
   if(catF)list=list.filter(b=>b.categoria===catF);
   if(vendF)list=list.filter(b=>b.vendedor===vendF);
-  const totVal=S.bonificacoes.reduce((s,b)=>s+(b.valor||0),0);
-  const totPagar=S.bonificacoes.reduce((s,b)=>s+(b.valorPagar||0),0);
-  const pago=S.bonificacoes.filter(b=>b.status==='Pago').reduce((s,b)=>s+(b.valorPagar||0),0);
+  const _bMes=S.bonificacoes.filter(_doMes);
+  const totVal=_bMes.reduce((s,b)=>s+(b.valor||0),0);
+  const totPagar=_bMes.reduce((s,b)=>s+(b.valorPagar||0),0);
+  const pago=_bMes.filter(b=>b.status==='Pago').reduce((s,b)=>s+(b.valorPagar||0),0);
+  const _bAntes=S.bonificacoes.filter(b=>b._de&&b.status!=='Pago').reduce((s,b)=>s+(b.valorPagar||0),0);
   document.getElementById('bn-totalval').textContent=fmtShort(totVal);
   document.getElementById('bn-totalpagar').textContent=fmtShort(totPagar);
   document.getElementById('bn-pago').textContent=fmtShort(pago);
-  document.getElementById('bn-saldo').textContent=fmtShort(totPagar-pago);
-  document.getElementById('tbBonif').innerHTML=list.length?list.map(b=>{const badge=b.status==='Pago'?'b-green':'b-orange';return `<tr><td>${fmtDataBR(b.data)}</td><td>${b.vendedor}</td><td><code>${b.numVenda||'-'}</code></td><td>${b.produto||'-'}</td><td><span class="badge b-blue">${b.categoria}</span></td><td>${fmt(b.valor)}</td><td style="color:var(--orange);font-weight:700">${b.pctBonif||2}%</td><td><strong style="color:var(--success)">${fmt(b.valorPagar)}</strong></td><td><span class="badge ${badge}">${b.status}</span></td><td><button class="btn btn-sm btn-ghost" onclick="openBnModal(${b.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="delBonif(${b.id})">Excluir</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="10">Nenhum lançamento</td></tr>';
+  document.getElementById('bn-saldo').textContent=fmtShort(totPagar-pago+_bAntes); // v41: saldo inclui o que ficou de meses anteriores
+  document.getElementById('tbBonif').innerHTML=list.length?list.map(b=>{const badge=b.status==='Pago'?'b-green':'b-orange';return `<tr><td>${fmtDataBR(b.data)}${rvTagMes(b._de)}</td><td>${b.vendedor}</td><td><code>${b.numVenda||'-'}</code></td><td>${b.produto||'-'}</td><td><span class="badge b-blue">${b.categoria}</span></td><td>${fmt(b.valor)}</td><td style="color:var(--orange);font-weight:700">${b.pctBonif||2}%</td><td><strong style="color:var(--success)">${fmt(b.valorPagar)}</strong></td><td><span class="badge ${badge}">${b.status}</span></td><td><button class="btn btn-sm btn-ghost" onclick="openBnModal(${b.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="delBonif(${b.id})">Excluir</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="10">Nenhum lançamento</td></tr>';
   // Ranking de bonificações por vendedor
   const rankingData={};
-  S.bonificacoes.forEach(b=>{
+  S.bonificacoes.filter(_doMes).forEach(b=>{
     if(!rankingData[b.vendedor])rankingData[b.vendedor]={totalVendido:0,totalBonif:0,qtd:0};
     rankingData[b.vendedor].totalVendido+=b.valor||0;
     rankingData[b.vendedor].totalBonif+=b.valorPagar||0;
@@ -3994,14 +4044,16 @@ function renderBonif(){
 }
 function renderVendBonif(){
   const my=S.bonificacoes.filter(b=>normStr(b.vendedor)===normStr(me.name));
-  const totVal=my.reduce((s,b)=>s+(b.valor||0),0);
-  const totPagar=my.reduce((s,b)=>s+(b.valorPagar||0),0);
-  const pago=my.filter(b=>b.status==='Pago').reduce((s,b)=>s+(b.valorPagar||0),0);
+  const _myMes=my.filter(_doMes);
+  const totVal=_myMes.reduce((s,b)=>s+(b.valor||0),0);
+  const totPagar=_myMes.reduce((s,b)=>s+(b.valorPagar||0),0);
+  const pago=_myMes.filter(b=>b.status==='Pago').reduce((s,b)=>s+(b.valorPagar||0),0);
+  const _myAntes=my.filter(b=>b._de&&b.status!=='Pago').reduce((s,b)=>s+(b.valorPagar||0),0);
   document.getElementById('vbn-totalval').textContent=fmtShort(totVal);
   document.getElementById('vbn-totalpagar').textContent=fmtShort(totPagar);
   document.getElementById('vbn-pago').textContent=fmtShort(pago);
-  document.getElementById('vbn-saldo').textContent=fmtShort(totPagar-pago);
-  document.getElementById('vbntbBonif').innerHTML=my.length?my.map(b=>{const badge=b.status==='Pago'?'b-green':'b-orange';return `<tr><td>${fmtDataBR(b.data)}</td><td><code>${b.numVenda||'-'}</code></td><td>${b.produto||'-'}</td><td><span class="badge b-blue">${b.categoria}</span></td><td>${fmt(b.valor)}</td><td><strong style="color:var(--success)">${fmt(b.valorPagar)}</strong></td><td><span class="badge ${badge}">${b.status}</span></td><td><button class="btn btn-sm btn-ghost" onclick="openVbnModal(${b.id})">Editar</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="8">Nenhum lançamento</td></tr>';
+  document.getElementById('vbn-saldo').textContent=fmtShort(totPagar-pago+_myAntes);
+  document.getElementById('vbntbBonif').innerHTML=my.length?my.map(b=>{const badge=b.status==='Pago'?'b-green':'b-orange';return `<tr><td>${fmtDataBR(b.data)}${rvTagMes(b._de)}</td><td><code>${b.numVenda||'-'}</code></td><td>${b.produto||'-'}</td><td><span class="badge b-blue">${b.categoria}</span></td><td>${fmt(b.valor)}</td><td><strong style="color:var(--success)">${fmt(b.valorPagar)}</strong></td><td><span class="badge ${badge}">${b.status}</span></td><td><button class="btn btn-sm btn-ghost" onclick="openVbnModal(${b.id})">Editar</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="8">Nenhum lançamento</td></tr>';
 }
 function delBonif(id){const b=S.bonificacoes.find(x=>Number(x.id)===Number(id));if(!b)return;if(!confirm('Excluir a bonificação de '+b.vendedor+' ('+b.categoria+', '+fmt(b.valorPagar)+')? Esta ação não pode ser desfeita.'))return;S.bonificacoes=S.bonificacoes.filter(x=>Number(x.id)!==Number(id));saveData();renderAll();}
 function openBnModal(id){
