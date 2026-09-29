@@ -554,6 +554,15 @@ body.rv-lateral #rvSub{display:flex}
         </div>
       </div>
     </div>
+
+    <div class="vg-card" id="vgParadosCard" style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <h3 class="vg-card-tit">Orçamentos parados há mais de 30 dias</h3>
+        <span class="vg-tag">COBRAR</span>
+      </div>
+      <div class="vg-sub" id="vgParadosSub" style="margin-bottom:12px">—</div>
+      <div id="vgParados"></div>
+    </div>
   </div>
 
   <div id="t-resumo" class="tab-pane">
@@ -611,7 +620,7 @@ body.rv-lateral #rvSub{display:flex}
     </div>
     <div class="card">
       <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center"><h3 class="card-title">Orçamentos Abertos</h3><button class="btn btn-sm btn-danger" onclick="dedupOrcamentos()" title="Remove cópias do mesmo orçamento (cliente+data+vendedor), mantendo 1">🧹 Limpar duplicados</button></div>
-      <div class="filter-row"><input type="text" id="orcFilter" class="filter-input" placeholder="Buscar cliente ou nº..." onkeyup="renderFunil()"><select id="orcVendFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os vendedores</option></select><select id="orcOrigFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos em aberto (carteira)</option><option value="mes">Só feitos neste mês</option><option value="antes">Só de meses anteriores</option></select></div>
+      <div class="filter-row"><input type="text" id="orcFilter" class="filter-input" placeholder="Buscar nome, telefone, nº ou O.S." onkeyup="renderFunil()"><select id="orcVendFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os vendedores</option></select><select id="orcOrigFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os meses (carteira)</option></select></div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>📍</th><th>Data</th><th>Nº ORC</th><th>Cliente</th><th>Vendedor</th><th>Valor</th><th>Dias</th><th>Ações</th></tr></thead>
         <tbody id="tbOrcs"><tr><td class="empty-row" colspan="7">Nenhum</td></tr></tbody>
@@ -1131,7 +1140,8 @@ body.rv-lateral #rvSub{display:flex}
     <div class="card">
       <div class="card-hd"><h3 class="card-title">Meus Orçamentos Abertos</h3></div>
       <div class="filter-row">
-        <input type="text" id="voFiltroTexto" class="filter-input" placeholder="Buscar cliente, valor ou data..." onkeyup="renderVendOrcs()">
+        <input type="text" id="voFiltroTexto" class="filter-input" placeholder="Buscar nome, telefone, valor ou data..." onkeyup="renderVendOrcs()">
+        <select id="voFiltroMes" class="filter-input" onchange="renderVendOrcs()"><option value="">Todos os meses</option></select>
         <select id="voFiltroStatus" class="filter-input" onchange="renderVendOrcs()">
           <option value="">Todos os status</option>
           <option value="aberto">🟢 Aberto</option>
@@ -2032,6 +2042,23 @@ function _doMes(x){return !!x&&!x._de;}
 function rvConvNoMes(o){return o&&o.status==='convertido'&&(!o._de||String(rvDataISO(o.dataConv)).slice(0,7)===rvMesISO(currentMonth));}
 function rvTagMes(m){if(!m)return '';var p=String(m).split('_');var ab={janeiro:'jan',fevereiro:'fev',marco:'mar',abril:'abr',maio:'mai',junho:'jun',julho:'jul',agosto:'ago',setembro:'set',outubro:'out',novembro:'nov',dezembro:'dez'};
   return ' <span class="badge" title="Veio de um mês anterior — continua contando no mês de origem" style="background:#E6F4F3;color:#07514E;font-size:10px">de '+(ab[p[0]]||p[0])+'/'+String(p[1]||'').slice(2)+'</span>';}
+// v42: preenche um <select> com os meses de origem que aparecem na lista (mantem a escolha)
+function rvPreencherMesOrigem(selId,lista,fixas){
+  var el=document.getElementById(selId);if(!el)return '';
+  var atual=el.value, tem={};
+  (lista||[]).forEach(function(o){tem[o._de||currentMonth]=true;});
+  var op=(fixas||'')+MONTHS.filter(function(m){return tem[m];}).map(function(m){return '<option value="m:'+m+'">Orçados em '+(MLAB[m]||m)+'</option>';}).join('');
+  if(el.innerHTML!==op)el.innerHTML=op;
+  el.value=atual; if(el.value!==atual)el.value='';
+  return el.value;
+}
+function rvFiltroOrigem(lista,v){
+  if(!v)return lista;
+  if(v==='mes')return lista.filter(_doMes);
+  if(v==='antes')return lista.filter(function(o){return o._de;});
+  if(v.indexOf('m:')===0){var m=v.slice(2);return lista.filter(function(o){return (o._de||currentMonth)===m;});}
+  return lista;
+}
 function rvDataISO(v){
   if(v===undefined||v===null)return '';
   var t=String(v).trim(); if(!t)return '';
@@ -3042,9 +3069,10 @@ function gerarTodasEntregas(){
 function renderFunil(){
   // v41: EM ABERTO = carteira inteira (este mes + meses anteriores). CONVERTIDOS = fechados neste mes,
   // inclusive de orcamento antigo. TAXA = dos orcamentos feitos neste mes (nao mistura meses).
-  const _orig=((document.getElementById('orcOrigFilter')||{}).value||'');
   let ab=S.orcamentos.filter(o=>o.status==='aberto'||o.status==='negociacao');
-  if(_orig==='mes')ab=ab.filter(_doMes);else if(_orig==='antes')ab=ab.filter(o=>o._de);
+  const _orig=rvPreencherMesOrigem('orcOrigFilter',S.orcamentos.filter(o=>o.status==='aberto'||o.status==='negociacao'||rvConvNoMes(o)),
+    '<option value="">Todos os meses (carteira)</option><option value="mes">Só feitos neste mês</option><option value="antes">Só de meses anteriores</option>');
+  ab=rvFiltroOrigem(ab,_orig);
   const conv=S.orcamentos.filter(rvConvNoMes);
   const _coorte=S.orcamentos.filter(_doMes);
   const perd=_coorte.filter(o=>o.status==='perdido');
@@ -3059,7 +3087,8 @@ function renderFunil(){
   document.getElementById('f-taxa').textContent=taxa+'%';
   const filter=((document.getElementById('orcFilter')||{}).value||'').toLowerCase();
   const fVend=((document.getElementById('orcVendFilter')||{}).value||'');
-  let abF=ab.filter(o=>(o.cliente||'').toLowerCase().includes(filter)||(o.num||'').toString().toLowerCase().includes(filter));
+  const _busca=o=>[o.cliente,o.num,o.tel,o.vendedor,o.os].some(x=>String(x||'').toLowerCase().includes(filter)); // v42: nome, nº, telefone, vendedor ou O.S.
+  let abF=ab.filter(_busca);
   if(fVend)abF=abF.filter(o=>normStr(o.vendedor)===normStr(fVend));
   document.getElementById('tbOrcs').innerHTML=abF.length?abF.map(o=>{
     const dias=Math.floor((Date.now()-dataMs(o.data))/86400000);
@@ -3068,7 +3097,7 @@ function renderFunil(){
     return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong> ${stBadge}${rvTagMes(o._de)}</td><td>${o.vendedor}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td><button class="btn btn-sm btn-teal" onclick="openConvModal(${o.id})">Converter</button> <button class="btn btn-sm btn-ghost" onclick="openEtapaModal(${o.id})">Status</button> <button class="btn btn-sm btn-danger" onclick="delOrcAdmin(${o.id})">Excluir</button></td></tr>`;
   }).join(''):'<tr><td class="empty-row" colspan="8">Nenhum</td></tr>';
   document.getElementById('tbOrcsConv').innerHTML=(function(){
-    let convF=conv.filter(o=>(o.cliente||'').toLowerCase().includes(filter)||(o.num||'').toString().toLowerCase().includes(filter));
+    let convF=rvFiltroOrigem(conv,_orig).filter(_busca);
     if(fVend)convF=convF.filter(o=>normStr(o.vendedor)===normStr(fVend));
     return convF.length?convF.map(o=>{
     const venda=o.os?S.vendas.find(v=>v.os===o.os):null;
@@ -3874,12 +3903,13 @@ function renderVendOrcs(){
   const fTxt=(document.getElementById('voFiltroTexto')?.value||'').toLowerCase();
   const fStatus=document.getElementById('voFiltroStatus')?.value||'';
   let my=S.orcamentos.filter(o=>normStr(o.vendedor)===normStr(me.name));
+  my=rvFiltroOrigem(my,rvPreencherMesOrigem('voFiltroMes',my,'<option value="">Todos os meses</option><option value="antes">Só de meses anteriores</option>')); // v42
   const ordem=document.getElementById('voOrdem')?.value||'data_desc';
   my=my.slice().sort((a,b)=>ordem==='data_asc'?dataMs(a.data)-dataMs(b.data):dataMs(b.data)-dataMs(a.data));
   if(fStatus)my=my.filter(o=>o.status===fStatus);
   if(fTxt)my=my.filter(o=>{
     const dataBR=fmtDataBR(o.data);
-    return (o.cliente||'').toLowerCase().includes(fTxt)||(o.num||'').toLowerCase().includes(fTxt)||String(o.valor||'').includes(fTxt)||dataBR.includes(fTxt)||(o.os||'').toLowerCase().includes(fTxt);
+    return (o.cliente||'').toLowerCase().includes(fTxt)||String(o.tel||'').toLowerCase().includes(fTxt)||String(o.num||'').toLowerCase().includes(fTxt)||String(o.valor||'').includes(fTxt)||dataBR.includes(fTxt)||(o.os||'').toLowerCase().includes(fTxt);
   });
   document.getElementById('voOrcs').innerHTML=my.length?my.map(o=>{
     const dias=Math.floor((Date.now()-dataMs(o.data))/86400000);
@@ -4709,6 +4739,26 @@ function renderVisao(){
       '<span class="vg-acao-n">'+i.n+'</span></button>';
   }).join('')||'<div class="vg-vazio">Tudo em dia.</div>';
 
+  // ---------- v42: CARTEIRA PARADA POR VENDEDOR (+30 dias sem resposta) ----------
+  var _par={};
+  (S.orcamentos||[]).forEach(function(o){
+    if(o.status!=='aberto'&&o.status!=='negociacao')return;
+    var ms=dataMs(o.data); if(!ms)return;
+    var d=Math.floor((Date.now()-ms)/86400000); if(d<=30)return;
+    var n=o.vendedor||'—'; if(!_par[n])_par[n]={nome:n,qtd:0,val:0,max:0};
+    _par[n].qtd++; _par[n].val+=_vgNum(o.valor); if(d>_par[n].max)_par[n].max=d;
+  });
+  var _parL=Object.keys(_par).map(function(k){return _par[k];}).sort(function(a,b){return b.val-a.val;});
+  var _parQ=_parL.reduce(function(a,x){return a+x.qtd;},0), _parV=_parL.reduce(function(a,x){return a+x.val;},0);
+  document.getElementById('vgParadosSub').textContent=_parQ
+    ? _parQ+' orçamento'+(_parQ===1?'':'s')+' · '+fmtShort(_parV)+' esperando resposta do vendedor. Só sai daqui quando ele marcar como convertido ou perdido.'
+    : 'Nenhum orçamento parado há mais de 30 dias.';
+  document.getElementById('vgParados').innerHTML=_parL.map(function(x){
+    return '<button type="button" class="vg-acao" data-v="'+_vgEsc(x.nome)+'" onclick="vgVerParados(this.getAttribute(\'data-v\'))">'+
+      '<span class="vg-acao-tx"><strong>'+_vgEsc(x.nome)+'</strong> <span style="color:#5C5A55;font-size:12px">· o mais antigo há '+x.max+' dias</span></span>'+
+      '<span class="vg-acao-n" style="min-width:auto;padding:0 10px;white-space:nowrap">'+x.qtd+' · '+fmtShort(x.val)+'</span></button>';
+  }).join('');
+
   // ---------- RANKING ----------
   var lista=Object.keys(porVend).map(function(k){return {nome:k,val:porVend[k]};})
     .sort(function(a,b){return b.val-a.val;}).slice(0,6);
@@ -4750,6 +4800,14 @@ function renderVisao(){
   } else {
     card.style.display='none';
   }
+}
+// v42: abre Orcamentos filtrado pelo vendedor, so os de meses anteriores
+function vgVerParados(nome){
+  vgIrPara('t-funil-leads');
+  var v=document.getElementById('orcVendFilter'); if(v){v.value=nome;}
+  renderFunil();
+  var o=document.getElementById('orcOrigFilter'); if(o){o.value='antes';}
+  renderFunil();
 }
 function vgIrPara(id){
   var sec=null;
