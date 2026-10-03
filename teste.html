@@ -555,6 +555,30 @@ body.rv-lateral #rvSub{display:flex}
       </div>
     </div>
 
+    <div class="vg-card" id="vgAprovCard" style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <h3 class="vg-card-tit">Pedidos de aprovação</h3><span class="vg-tag">DECIDIR</span>
+      </div>
+      <div class="vg-sub" id="vgAprovSub" style="margin-bottom:12px">—</div>
+      <div id="vgAprov"></div>
+    </div>
+
+    <div class="vg-card" id="vgEquipeCard" style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <h3 class="vg-card-tit">Equipe hoje</h3><span class="vg-tag">CARTEIRA</span>
+      </div>
+      <div class="vg-sub" style="margin-bottom:12px">Vermelho: tem retorno prometido e não feito. Amarelo: orçamento sem data ou parado há mais de 30 dias. Verde: em dia.</div>
+      <div id="vgEquipe"></div>
+    </div>
+
+    <div class="vg-card" id="vgFornCard" style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <h3 class="vg-card-tit">Vendas travadas por fornecedor</h3><span class="vg-tag">COBRAR</span>
+      </div>
+      <div class="vg-sub" id="vgFornSub" style="margin-bottom:12px">—</div>
+      <div id="vgForn"></div>
+    </div>
+
     <div class="vg-card" id="vgParadosCard" style="margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
         <h3 class="vg-card-tit">Orçamentos parados há mais de 30 dias</h3>
@@ -620,7 +644,7 @@ body.rv-lateral #rvSub{display:flex}
     </div>
     <div class="card">
       <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center"><h3 class="card-title">Orçamentos Abertos</h3><button class="btn btn-sm btn-danger" onclick="dedupOrcamentos()" title="Remove cópias do mesmo orçamento (cliente+data+vendedor), mantendo 1">🧹 Limpar duplicados</button></div>
-      <div class="filter-row"><input type="text" id="orcFilter" class="filter-input" placeholder="Buscar nome, telefone, nº ou O.S." onkeyup="renderFunil()"><select id="orcVendFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os vendedores</option></select><select id="orcOrigFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os meses (carteira)</option></select></div>
+      <div class="filter-row"><input type="text" id="orcFilter" class="filter-input" placeholder="Buscar nome, telefone, nº ou O.S." onkeyup="renderFunil()"><select id="orcVendFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os vendedores</option></select><select id="orcOrigFilter" class="filter-input" onchange="renderFunil()"><option value="">Todos os meses (carteira)</option></select><select id="orcAguardFilter" class="filter-input" onchange="renderFunil()"></select></div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>📍</th><th>Data</th><th>Nº ORC</th><th>Cliente</th><th>Vendedor</th><th>Valor</th><th>Dias</th><th>Ações</th></tr></thead>
         <tbody id="tbOrcs"><tr><td class="empty-row" colspan="7">Nenhum</td></tr></tbody>
@@ -1010,6 +1034,15 @@ body.rv-lateral #rvSub{display:flex}
         ℹ️ O índice mínimo aparece no relatório como <strong>alerta</strong> — a gestão decide se aplica ou não.<br>
         O bônus por pós-venda completo é calculado pelo mês em que o F30 foi registrado (não o mês da venda).
       </div>
+      <div class="form-row" style="margin-top:16px">
+        <div class="field">
+          <label>Carteira em dia: máximo de orçamentos parados há mais de 30 dias para receber o prêmio</label>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <input id="cfgMaxParados" type="number" min="0" step="1" placeholder="desligada" style="width:110px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:18px;font-weight:700;text-align:center">
+            <div style="font-size:12px;color:var(--muted)">Deixe <strong>vazio</strong> para a regra ficar desligada.<br>Ligada, o vendedor vê o aviso no painel dele e o relatório de premiação marca quem passou do limite.</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- META COLETIVA -->
@@ -1050,6 +1083,19 @@ body.rv-lateral #rvSub{display:flex}
       </div>
       <div id="lgLista"></div>
     </div>
+    <div class="card" id="vdCarteiraCard">
+      <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <h3 class="card-title">Minha carteira em dia</h3><span id="vdCartSelo" class="badge b-green">—</span>
+      </div>
+      <div class="metrics" style="margin-bottom:0">
+        <div class="metric metric-top-red"><div class="metric-lbl">Retornos atrasados</div><div class="metric-val" style="color:var(--danger)" id="vd-ret-atras">0</div></div>
+        <div class="metric metric-top-orange"><div class="metric-lbl">Sem retorno marcado</div><div class="metric-val" style="color:var(--orange)" id="vd-ret-sem">0</div></div>
+        <div class="metric metric-top-red"><div class="metric-lbl">Parados há +30 dias</div><div class="metric-val" style="color:var(--danger)" id="vd-parados">0</div></div>
+        <div class="metric metric-top"><div class="metric-lbl">Sem telefone</div><div class="metric-val" id="vd-semtel">0</div></div>
+      </div>
+      <div id="vdCartDica" style="font-size:12px;color:var(--muted);margin-top:10px"></div>
+      <div id="vdRegraPremio" style="display:none;margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px"></div>
+    </div>
     <div class="big-meta">
       <div class="big-card big-card-teal">
         <div class="big-card-lbl">💰 Minhas Vendas (Mês)</div>
@@ -1071,6 +1117,7 @@ body.rv-lateral #rvSub{display:flex}
         <span id="vd-progLabel">0%</span><span id="vd-progValues">R$ 0 / R$ 0</span>
       </div>
       <div id="vd-proxFaixa" style="margin-top:14px;font-size:13px;color:var(--mid)"></div>
+      <div id="vd-projecao" style="display:none;margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:8px;font-size:13px;line-height:1.5"></div>
     </div>
 
     <div class="big-meta">
@@ -1094,6 +1141,10 @@ body.rv-lateral #rvSub{display:flex}
       <div class="metric metric-top-orange"><div class="metric-lbl">Taxa Conversão</div><div class="metric-val" style="color:var(--orange);font-size:20px" id="vd-txconv">—</div></div>
       <div class="metric metric-top-red"><div class="metric-lbl">Pós-venda em Aberto</div><div class="metric-val" style="color:var(--danger)" id="vd-pvaberto">0</div></div>
       <div class="metric metric-top" style="position:relative"><div class="metric-lbl">Índice Pós-venda Acumulado</div><div class="metric-val" id="vd-pvidx" style="font-size:20px">—</div><div style="font-size:11px;color:var(--muted);margin-top:4px" id="vd-pvidx-sub"></div></div>
+    </div>
+    <div class="card" id="vdEuCard">
+      <div class="card-hd"><h3 class="card-title">Eu comparado comigo</h3><span class="badge b-blue">só seus números</span></div>
+      <div id="vdEu"></div>
     </div>
   </div>
 
@@ -1142,6 +1193,7 @@ body.rv-lateral #rvSub{display:flex}
       <div class="filter-row">
         <input type="text" id="voFiltroTexto" class="filter-input" placeholder="Buscar nome, telefone, valor ou data..." onkeyup="renderVendOrcs()">
         <select id="voFiltroMes" class="filter-input" onchange="renderVendOrcs()"><option value="">Todos os meses</option></select>
+        <select id="voFiltroAguard" class="filter-input" onchange="renderVendOrcs()"></select>
         <select id="voFiltroStatus" class="filter-input" onchange="renderVendOrcs()">
           <option value="">Todos os status</option>
           <option value="aberto">🟢 Aberto</option>
@@ -1354,6 +1406,24 @@ body.rv-lateral #rvSub{display:flex}
     <div class="field"><label>Cliente</label><input id="ovmCliente" type="text" readonly style="background:var(--bg)"></div>
     <div class="field"><label>Status</label><select id="ovmStatus" onchange="ovmToggleMotivo()"><option value="aberto">🟢 Aberto</option><option value="negociacao">🟡 Em Negociação</option><option value="convertido">✅ Convertido</option><option value="perdido">🔴 Perdido</option></select></div>
     <div class="field" id="ovmMotivoWrap" style="display:none"><label>Motivo da perda (obrigatório)</label><select id="ovmMotivo"><option value="">— por que perdeu? —</option><option value="preco">Preço</option><option value="prazo">Prazo de entrega</option><option value="estoque">Não tínhamos o produto</option><option value="atendimento">Atendimento</option><option value="concorrente">Foi na concorrência</option><option value="obra_parou">A obra parou ou adiou</option><option value="sem_retorno">Cliente sumiu</option><option value="outro">Outro</option></select></div>
+    <div id="ovmObsWrap">
+      <div class="field"><label>Esperando o quê?</label><select id="ovmAguard" onchange="ovmToggleAguard()"></select></div>
+      <div class="field" id="ovmFornWrap" style="display:none"><label>Qual fornecedor / fábrica?</label><input id="ovmForn" list="rvFornList" maxlength="60" placeholder="Ex.: Portobello"></div>
+      <div id="ovmAprovWrap" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;background:var(--bg)">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">Pedido para a gestão aprovar</div>
+        <div class="field"><label>O que você precisa?</label><select id="ovmApTipo"><option value="desconto">Desconto</option><option value="condicao">Condição de pagamento</option><option value="prazo">Prazo de entrega</option><option value="outro">Outro</option></select></div>
+        <div class="field"><label>Desconto (%)</label><input id="ovmApPct" type="number" min="0" max="100" step="0.5" placeholder="Ex.: 8"></div>
+        <div class="field"><label>Valor final proposto (R$)</label><input id="ovmApValor" type="number" min="0" step="0.01" placeholder="Ex.: 11040"></div>
+        <div class="field"><label>Condição / detalhe</label><input id="ovmApCond" type="text" maxlength="80" placeholder="Ex.: 10x sem juros no cartão"></div>
+        <div class="field"><label>Por que o cliente precisa disso? (obrigatório)</label><input id="ovmApMotivo" type="text" maxlength="140" placeholder="Ex.: concorrente ofereceu 8%; obra grande"></div>
+        <div id="ovmApSit" style="font-size:12px;color:var(--muted)"></div>
+      </div>
+      <datalist id="rvFornList"></datalist>
+      <div class="field"><label>Observação rápida</label><input id="ovmObs" type="text" maxlength="140" placeholder="Ex.: falta retorno do preço do representante da Portobello">
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Uma frase. Aparece na lista e no "Ligar hoje" para você lembrar na hora o que está travando.</div></div>
+    </div>
+    <div class="field" id="ovmProxWrap"><label>Próximo contato com o cliente (obrigatório enquanto estiver aberto)</label><input id="ovmProx" type="date">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Nessa data o orçamento volta para o seu "Ligar hoje". Se a data passar sem você atualizar, ele fica vermelho como retorno atrasado.</div></div>
     <div class="field"><label>Nº da Venda (O.S. — após fechar)</label><input id="ovmOS" type="text" placeholder="V50265"></div>
     <div class="field">
       <label>Tipo de Conversão</label>
@@ -1373,6 +1443,22 @@ body.rv-lateral #rvSub{display:flex}
   </div>
 </div>
 
+<!-- v45: MODAL RESPONDER PEDIDO DE APROVACAO -->
+<div id="aprovModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hd"><h3 style="font-size:15px;font-weight:700">Responder pedido do vendedor</h3><button class="modal-close" onclick="fecharAprov()">✕</button></div>
+    <input id="apId" type="hidden">
+    <div id="apResumo" style="font-size:13px;line-height:1.55;margin-bottom:12px"></div>
+    <div class="field"><label>Resposta para o vendedor (obrigatória em Contraproposta e Recusar)</label><input id="apResp" type="text" maxlength="140" placeholder="Ex.: aprovo 5% só à vista"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-teal" onclick="responderAprov('aprovado')">✅ Aprovar</button>
+      <button class="btn btn-ghost" onclick="responderAprov('contraproposta')">↔ Contraproposta</button>
+      <button class="btn btn-danger" onclick="responderAprov('recusado')">✕ Recusar</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Ao responder, o orçamento volta para o "Ligar hoje" do vendedor com a sua resposta.</div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR LEAD/ETAPA -->
 <div id="etapaModal" class="modal-overlay hidden">
   <div class="modal-box" style="max-width:450px">
@@ -1381,6 +1467,12 @@ body.rv-lateral #rvSub{display:flex}
     <div class="field"><label>Status</label><select id="emStatus" onchange="emToggleMotivo()"><option value="aberto">🟢 Aberto</option><option value="negociacao">🟡 Em Negociação</option><option value="perdido">🔴 Perdido</option></select></div>
     <div class="field" id="emMotivoWrap" style="display:none"><label>Motivo da perda (obrigatório)</label><select id="emMotivo"><option value="">— por que perdeu? —</option><option value="preco">Preço</option><option value="prazo">Prazo de entrega</option><option value="estoque">Não tínhamos o produto</option><option value="atendimento">Atendimento</option><option value="concorrente">Foi na concorrência</option><option value="obra_parou">A obra parou ou adiou</option><option value="sem_retorno">Cliente sumiu</option><option value="outro">Outro</option></select>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">Sem isso você sabe quanto perdeu e nunca por quê. Três meses disso viram decisão de compra e de preço.</div></div>
+    <div class="field" id="emProxWrap"><label>Próximo contato com o cliente</label><input id="emProx" type="date"></div>
+    <div id="emObsWrap">
+      <div class="field"><label>Esperando o quê?</label><select id="emAguard"></select></div>
+      <div class="field"><label>Fornecedor / fábrica (se for o caso)</label><input id="emForn" list="rvFornList" maxlength="60"></div>
+      <div class="field"><label>Observação rápida</label><input id="emObs" type="text" maxlength="140" placeholder="Ex.: aguardando prazo da fábrica"></div>
+    </div>
     <div style="display:flex;gap:10px;margin-top:20px">
       <button class="btn btn-teal" onclick="saveEtapa()">💾 Salvar</button>
       <button class="btn btn-ghost" onclick="closeEtapaModal()">Cancelar</button>
@@ -2042,6 +2134,78 @@ function _doMes(x){return !!x&&!x._de;}
 function rvConvNoMes(o){return o&&o.status==='convertido'&&(!o._de||String(rvDataISO(o.dataConv)).slice(0,7)===rvMesISO(currentMonth));}
 function rvTagMes(m){if(!m)return '';var p=String(m).split('_');var ab={janeiro:'jan',fevereiro:'fev',marco:'mar',abril:'abr',maio:'mai',junho:'jun',julho:'jul',agosto:'ago',setembro:'set',outubro:'out',novembro:'nov',dezembro:'dez'};
   return ' <span class="badge" title="Veio de um mês anterior — continua contando no mês de origem" style="background:#E6F4F3;color:#07514E;font-size:10px">de '+(ab[p[0]]||p[0])+'/'+String(p[1]||'').slice(2)+'</span>';}
+// ===== v43 AUTOGESTAO: proximo contato, carteira em dia, projecao, comparacao com ele mesmo =====
+// v43: a faixa guarda 0.005 = 0,5% — antes o vendedor via "0.005%"
+function rvPctFaixa(p){var n=Number(p)||0;if(n<1)n=n*100;return n.toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';}
+// v44: "esperando o que?" + observacao rapida do orcamento
+var AGUARD_LABEL={cliente:'Cliente decidir',fornecedor_preco:'Fornecedor/fábrica: preço',fornecedor_prazo:'Fornecedor/fábrica: prazo de entrega',
+  arquiteto:'Arquiteto/profissional',gestao:'Aprovação da gestão (desconto/condição)',medicao:'Medição ou visita na obra',outro:'Outro'};
+var AGUARD_OPTS='<option value="">— nada pendente —</option>'+Object.keys(AGUARD_LABEL).map(function(k){return '<option value="'+k+'">'+AGUARD_LABEL[k]+'</option>';}).join('');
+// ===== v45 GESTAO: pedido de aprovacao, equipe hoje, gargalo de fornecedor =====
+var APROV_TIPO={desconto:'Desconto',condicao:'Condição de pagamento',prazo:'Prazo de entrega',outro:'Outro'};
+var APROV_ST={pendente:'Pedido à gestão',aprovado:'Gestão aprovou',contraproposta:'Contraproposta da gestão',recusado:'Gestão recusou'};
+function rvAprov(o){if(!o||!o.aprov)return null;if(typeof o.aprov==='object')return o.aprov;try{var a=JSON.parse(o.aprov);return (a&&typeof a==='object')?a:null;}catch(e){return null;}}
+function rvAgoraISO(){var d=new Date(),p=function(n){return (n<10?'0':'')+n;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());}
+function rvHorasDesde(iso){var t=new Date(iso).getTime();return t?Math.max(0,(Date.now()-t)/3600000):null;}
+function rvTempoTxt(iso){var h=rvHorasDesde(iso);if(h===null)return '';if(h<1)return 'agora há pouco';if(h<24)return 'há '+Math.floor(h)+'h';var d=Math.floor(h/24);return 'há '+d+' dia'+(d===1?'':'s');}
+function rvAprovResumo(a){
+  if(!a)return '';var p=[];
+  if(a.tipo)p.push(APROV_TIPO[a.tipo]||a.tipo);
+  if(a.pct)p.push(String(a.pct).replace('.',',')+'%');
+  if(a.valor)p.push('valor final '+fmt(a.valor));
+  if(a.cond)p.push(a.cond);
+  return p.join(' · ')+(a.motivo?(' — '+a.motivo):'');
+}
+// texto curto da situacao do pedido (para o vendedor e para as listas)
+function rvAprovTexto(o){
+  var a=rvAprov(o);if(!a||!a.status)return '';
+  if(a.status==='pendente')return '🕓 Pedido à gestão enviado '+rvTempoTxt(a.em)+': '+rvAprovResumo(a);
+  var ic=a.status==='aprovado'?'✅':(a.status==='recusado'?'✕':'↔');
+  return ic+' '+(APROV_ST[a.status]||a.status)+(a.resposta?(': '+a.resposta):'')+' ('+rvTempoTxt(a.respEm)+')';
+}
+function rvTagObs(o){
+  if(!rvOrcAberto(o))return '';
+  var a=AGUARD_LABEL[o.aguardando]||'', t=String(o.obs||'').trim();
+  if(a&&String(o.aguardando).indexOf('fornecedor')===0&&o.fornAguard)a+=' ('+o.fornAguard+')';
+  var ap=rvAprovTexto(o), apH=ap?('<div style="font-size:11px;margin-top:3px;color:'+(/^✕/.test(ap)?'#B4271F':(/^✅/.test(ap)?'#17795E':'#A04F00'))+';line-height:1.35">'+_vgEsc(ap)+'</div>'):'';
+  if(!a&&!t)return apH;
+  var forn=String(o.aguardando||'').indexOf('fornecedor')===0, cor=forn?'#A04F00':(o.aguardando==='gestao'?'#B4271F':'#07514E');
+  return '<div style="font-size:11px;margin-top:3px;color:'+cor+';white-space:normal;line-height:1.35">⏳ '+(a?'<strong>Esperando: '+_vgEsc(a)+'</strong>':'')+(a&&t?' — ':'')+_vgEsc(t)+'</div>'+apH;
+}
+function rvFiltroAguard(lista,v){
+  if(!v)return lista;
+  if(v==='fornecedor')return lista.filter(function(o){return String(o.aguardando||'').indexOf('fornecedor')===0;});
+  if(v==='nada')return lista.filter(function(o){return !o.aguardando;});
+  return lista.filter(function(o){return o.aguardando===v;});
+}
+var AGUARD_FILTRO='<option value="">Esperando: tudo</option><option value="fornecedor">Esperando fornecedor/fábrica</option><option value="cliente">Esperando cliente</option><option value="gestao">Esperando a gestão</option><option value="arquiteto">Esperando arquiteto</option><option value="medicao">Esperando medição/visita</option><option value="nada">Sem pendência marcada</option>';
+function rvOrcAberto(o){return !!o&&(o.status==='aberto'||o.status==='negociacao');}
+function rvDiasDesde(iso){var ms=dataMs(iso);if(!ms)return null;return Math.round((dataMs(hojeISO())-ms)/86400000);}
+// situacao do retorno marcado: atrasado (data passou), hoje, agendado (futuro) ou sem (nao marcou)
+function rvRetorno(o){
+  var p=rvDataISO(o&&o.proxContato); if(!p)return {st:'sem'};
+  var d=rvDiasDesde(p); if(d===null)return {st:'sem'};
+  if(d>0)return {st:'atrasado',dias:d,data:p}; if(d===0)return {st:'hoje',data:p};
+  return {st:'agendado',data:p,em:-d};
+}
+function rvTagRetorno(o){
+  if(!rvOrcAberto(o))return '';
+  var r=rvRetorno(o), cor, tx;
+  if(r.st==='atrasado'){cor='#B4271F';tx='retorno atrasado '+r.dias+'d';}
+  else if(r.st==='hoje'){cor='#A04F00';tx='retorno hoje';}
+  else if(r.st==='agendado'){cor='#5C5A55';tx='retorno '+fmtDataBR(r.data);}
+  else {cor='#A04F00';tx='sem retorno marcado';}
+  return ' <span style="display:inline-block;font-size:10px;font-weight:600;color:'+cor+';white-space:nowrap">· '+tx+'</span>';
+}
+function rvParados30(lista){return (lista||[]).filter(function(o){return rvOrcAberto(o)&&(rvDiasDesde(o.data)||0)>30;});}
+// regra do premio: limite de orcamentos parados (+30 dias). Vazio = regra desligada.
+function rvMaxParados(){var v=G.config&&G.config.maxParados;if(v===''||v===null||v===undefined)return null;var n=Number(v);return (isFinite(n)&&n>=0)?n:null;}
+// dias uteis (seg a sab) do mes corrente: total e quantos ja passaram (contando hoje)
+function rvDiasUteisMes(){
+  var h=new Date(),a=h.getFullYear(),m=h.getMonth(),ult=new Date(a,m+1,0).getDate(),tot=0,pas=0;
+  for(var d=1;d<=ult;d++){if(new Date(a,m,d).getDay()!==0){tot++;if(d<=h.getDate())pas++;}}
+  return {total:tot,passados:pas,faltam:_vgDiasUteis()};
+}
 // v42: preenche um <select> com os meses de origem que aparecem na lista (mantem a escolha)
 function rvPreencherMesOrigem(selId,lista,fixas){
   var el=document.getElementById(selId);if(!el)return '';
@@ -2069,7 +2233,7 @@ function rvDataISO(v){
   return t;
 }
 function agruparPorMes(dadosPlanos){
-  ['vendas','orcamentos'].forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(r&&r.data)r.data=rvDataISO(r.data);if(r&&r.dataConv)r.dataConv=rvDataISO(r.dataConv);});});
+  ['vendas','orcamentos'].forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(r&&r.data)r.data=rvDataISO(r.data);if(r&&r.dataConv)r.dataConv=rvDataISO(r.dataConv);if(r&&r.proxContato)r.proxContato=rvDataISO(r.proxContato);if(r&&r.obs!==undefined&&r.obs!==null&&typeof r.obs!=='string')r.obs=String(r.obs);if(r&&r.aguardDesde)r.aguardDesde=rvDataISO(r.aguardDesde);});});
   // v38: o Sheets transforma 5000 (texto) em numero. Sem isto, apagar/reimportar nao achava a O.S. e a tela quebrava.
   var _txt={vendas:['os','cliente','vendedor'],orcamentos:['os','num','cliente','vendedor','tel'],pedidos:['os','cliente'],indicacoes:['os','venda'],posvenda:['osBase'],bonificacoes:['numVenda','vendedor']};
   Object.keys(_txt).forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(!r)return;_txt[tab].forEach(function(c){if(r[c]!==undefined&&r[c]!==null&&r[c]!==''&&typeof r[c]!=='string')r[c]=String(r[c]);});});});
@@ -2378,10 +2542,10 @@ function renderVendDashboard(){
   const proxEl=document.getElementById('vd-proxFaixa');
   const faixaAtual=calcFaixa(total);
   const faixas=getFaixasAtivas();
-  if(faixaEl){faixaEl.textContent=faixaAtual?getFaixa(total)+' • '+faixaAtual.pct+'%':'Sem faixa ainda';}
+  if(faixaEl){faixaEl.textContent=faixaAtual?getFaixa(total)+' • '+rvPctFaixa(faixaAtual.pct):'Sem faixa ainda';}
   if(proxEl){
     const proxima=faixas.find(f=>f.min>total);
-    if(proxima){const falta=proxima.min-total;proxEl.innerHTML='💪 Faltam <strong style="color:var(--teal)">'+fmt(falta)+'</strong> para atingir a faixa <strong>'+proxima.nome+'</strong> ('+proxima.pct+'% de prêmio).';}
+    if(proxima){const falta=proxima.min-total;proxEl.innerHTML='💪 Faltam <strong style="color:var(--teal)">'+fmt(falta)+'</strong> para atingir a faixa <strong>'+proxima.nome+'</strong> ('+rvPctFaixa(proxima.pct)+' de prêmio).';}
     else if(faixaAtual){proxEl.innerHTML='🏆 <strong style="color:var(--success)">Você está na faixa máxima!</strong> Continue mantendo o ritmo.';}
     else if(faixas.length){proxEl.innerHTML='💪 Faltam <strong style="color:var(--teal)">'+fmt(faixas[0].min-total)+'</strong> para entrar na primeira faixa de premiação ('+faixas[0].nome+').';}
     else{proxEl.textContent='';}
@@ -2405,6 +2569,9 @@ function renderVendDashboard(){
   var _vnV=rvVendasNovas([currentMonth]);
   if(gapEl)gapEl.textContent=_vnV.qtd;
   if(gapSubEl)gapSubEl.textContent=_vnV.parcelas?('+ '+_vnV.parcelas+' parcela'+(_vnV.parcelas===1?'':'s')+' de vendas anteriores'):'O.S. que entraram neste mês';
+  try{rvVendCarteira();}catch(e){console.error('rvVendCarteira',e);}
+  try{rvVendProjecao(total);}catch(e){console.error('rvVendProjecao',e);}
+  try{rvVendEuComigo();}catch(e){console.error('rvVendEuComigo',e);}
   // Diagnostico: se zero vendas, mostra o nome usado no filtro para facilitar identificar mismatch
   var _myV=S.vendas.filter(function(v){return normStr(v.vendedor)===normStr(me.name);});
   var _diagEl=document.getElementById('vd-diagNome');
@@ -2416,6 +2583,67 @@ function renderVendDashboard(){
       _diagEl.style.display='none';
     }
   }
+}
+
+// v43: carteira em dia (so os orcamentos DELE)
+function rvVendCarteira(){
+  var meus=(S.orcamentos||[]).filter(function(o){return normStr(o.vendedor)===normStr(me.name)&&rvOrcAberto(o);});
+  var atras=0,sem=0,semTel=0;
+  meus.forEach(function(o){var r=rvRetorno(o);if(r.st==='atrasado')atras++;else if(r.st==='sem')sem++;if(!String(o.tel||'').replace(/\D/g,''))semTel++;});
+  var par=rvParados30(meus).length;
+  var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+  set('vd-ret-atras',atras);set('vd-ret-sem',sem);set('vd-parados',par);set('vd-semtel',semTel);
+  var pend=atras+sem;
+  var selo=document.getElementById('vdCartSelo');
+  if(selo){selo.textContent=pend?(pend+' para resolver'):'Em dia';selo.className='badge '+(pend?'b-orange':'b-green');}
+  var dica=[];
+  if(atras)dica.push(atras+' cliente'+(atras===1?'':'s')+' esperando o retorno que você prometeu');
+  if(sem)dica.push(sem+' orçamento'+(sem===1?'':'s')+' sem data de próximo contato');
+  if(semTel)dica.push(semTel+' sem telefone — sem telefone você não consegue retomar o cliente');
+  set('vdCartDica',dica.length?('Resolva em "Ligar hoje" ou em Meus Orçamentos: '+dica.join(' · ')+'.'):'Todo orçamento aberto tem retorno marcado. É assim que se fecha venda.');
+  var lim=rvMaxParados(), box=document.getElementById('vdRegraPremio');
+  if(box){
+    if(lim===null){box.style.display='none';}
+    else{
+      box.style.display='';
+      var ok=par<=lim;
+      box.style.background=ok?'#E7F5EF':'#FDECEA';box.style.color=ok?'#17795E':'#B4271F';
+      box.innerHTML=ok?('✅ Regra do prêmio: até <strong>'+lim+'</strong> orçamento'+(lim===1?'':'s')+' parado'+(lim===1?'':'s')+' há mais de 30 dias. Você tem <strong>'+par+'</strong> — sua faixa está garantida nesse ponto.')
+        :('⚠️ Regra do prêmio: até <strong>'+lim+'</strong> parado'+(lim===1?'':'s')+' há mais de 30 dias. Você tem <strong>'+par+'</strong>. Resolva <strong>'+(par-lim)+'</strong> (convertido ou perdido) até o fim do mês para não perder sua faixa.');
+    }
+  }
+}
+// v43: projecao do mes no ritmo atual (so no mes corrente)
+function rvVendProjecao(total){
+  var el=document.getElementById('vd-projecao');if(!el)return;
+  if(rvMesISO(currentMonth)!==hojeISO().slice(0,7)){el.style.display='none';return;}
+  var du=rvDiasUteisMes(); if(!du.passados||!du.total){el.style.display='none';return;}
+  var proj=total/du.passados*du.total;
+  var fx=calcFaixa(proj), fxs=getFaixasAtivas(), prox=fxs.find(function(f){return f.min>total;});
+  var h='📈 No ritmo atual você fecha o mês em <strong>'+fmt(proj)+'</strong> — '+(fx?('faixa <strong>'+fx.nome+'</strong>'):'<strong>sem faixa de prêmio</strong>')+'.';
+  if(prox&&du.faltam>0){var falta=prox.min-total;h+='<br>Para chegar na faixa <strong>'+prox.nome+'</strong>: <strong>'+fmt(falta/du.faltam)+'</strong> por dia útil nos '+du.faltam+' dia'+(du.faltam===1?'':'s')+' que faltam.';}
+  el.innerHTML=h;el.style.display='';
+}
+// v43: conversao e ticket deste mes x media dos 3 meses anteriores DELE
+function rvVendEuComigo(){
+  var el=document.getElementById('vdEu');if(!el)return;
+  var ci=MONTHS.indexOf(currentMonth), meu=function(o){return normStr(o.vendedor)===normStr(me.name);};
+  function conv(m){var l=(m===currentMonth?(S.orcamentos||[]).filter(_doMes):(_vgDados(m).orcamentos||[])).filter(meu);if(!l.length)return null;return l.filter(function(o){return o.status==='convertido';}).length/l.length*100;}
+  function tick(m){var r=rvVendasNovas([m]);return r.qtd?r.ticket:null;}
+  var ant=[];for(var i=ci-1;i>=0&&ant.length<3;i--)ant.push(MONTHS[i]);
+  function media(f){var v=ant.map(f).filter(function(x){return x!==null;});return v.length?v.reduce(function(a,b){return a+b;},0)/v.length:null;}
+  function linha(rot,agora,med,fmtF){
+    var seta='',cor='var(--muted)';
+    if(agora!==null&&med!==null){if(agora>med*1.02){seta=' ↑';cor='var(--success)';}else if(agora<med*0.98){seta=' ↓';cor='var(--danger)';}else{seta=' =';}}
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'+
+      '<div style="font-size:13px;color:var(--mid)">'+rot+'</div>'+
+      '<div style="text-align:right"><span style="font-size:18px;font-weight:700;color:'+cor+'">'+(agora===null?'—':fmtF(agora))+seta+'</span>'+
+      '<div style="font-size:11px;color:var(--muted)">sua média dos meses anteriores: '+(med===null?'sem histórico':fmtF(med))+'</div></div></div>';
+  }
+  var pc=function(x){return Math.round(x)+'%';};
+  el.innerHTML=linha('Conversão dos orçamentos deste mês',conv(currentMonth),media(conv),pc)+
+    linha('Ticket médio das vendas novas',tick(currentMonth),media(tick),fmtShort)+
+    '<div style="font-size:11px;color:var(--muted);margin-top:8px">Comparação só com você mesmo. Seta para baixo é sinal para rever o atendimento, não motivo para desanimar.</div>';
 }
 
 // ===== EDIT VENDEDOR =====
@@ -2561,9 +2789,10 @@ function renderRelatorio(){
     const pvIdx=calcIndicePosvenda(nome);const pvBonus=calcBonusPosvenda(nome,currentMonth);const pvBonusValor=pvBonus*(G.config?.pvBonusUnit||0);
     const pvMin=getPvMinPct();
     const pvOk=pvIdx>=pvMin;
+    const _lim=rvMaxParados();const _np=_lim===null?0:rvParados30((S.orcamentos||[]).filter(o=>normStr(o.vendedor)===normStr(nome))).length;const cartOk=(_lim===null||_np<=_lim); // v43
     const pvCell=`<span style="font-weight:700;color:${pvOk?'var(--success)':'var(--danger)'}">${pvIdx}%</span><br><small style="color:var(--muted)">${pvOk?'✅ Elegível':'⚠️ '+pvIdx+'%/'+pvMin+'% mín.'}</small>`;
     html+=`<tr style="${rowColor}">
-      <td><strong>${nome}</strong>${!pvOk?'<br><small style="color:var(--danger)">⚠️ Pós-venda abaixo do mínimo</small>':''}</td>
+      <td><strong>${nome}</strong>${!pvOk?'<br><small style="color:var(--danger)">⚠️ Pós-venda abaixo do mínimo</small>':''}${!cartOk?'<br><small style="color:var(--danger)">⚠️ Carteira: '+_np+' parados (limite '+_lim+')</small>':''}</td>
       <td>${d.qtd}</td>
       <td><strong>${fmt(d.total)}</strong></td>
       <td>${faixaNome}</td>
@@ -2573,7 +2802,7 @@ function renderRelatorio(){
       <td style="color:var(--orange)">${fmt(bonifVal)}</td>
       <td>${pvCell}</td>
       <td style="color:var(--teal)">${pvBonus>0?pvBonus+' PV = '+fmt(pvBonusValor):'—'}</td>
-      <td style="background:${pvOk?'#d1fae5':'#fee2e2'};font-weight:700;color:${pvOk?'#065f46':'#991b1b'}">${fmt(totalPremio+pvBonusValor)}</td>
+      <td style="background:${(pvOk&&cartOk)?'#d1fae5':'#fee2e2'};font-weight:700;color:${(pvOk&&cartOk)?'#065f46':'#991b1b'}">${fmt(totalPremio+pvBonusValor)}</td>
     </tr>`;
   });
   
@@ -2612,6 +2841,7 @@ function renderConfig(){
   const cfg=G.config||{};
   const el=document.getElementById('cfgPvPct');if(el)el.value=cfg.pvMinPct!=null?cfg.pvMinPct:40;
   const elPvB=document.getElementById('cfgPvBonus');if(elPvB)elPvB.value=cfg.pvBonusUnit||0;
+  const elMx=document.getElementById('cfgMaxParados');if(elMx)elMx.value=(rvMaxParados()===null?'':rvMaxParados());
   const el2=document.getElementById('cfgMeta');if(el2)el2.value=S.meta||400000;
   const el3=document.getElementById('cfgBonus');if(el3)el3.value=cfg.bonusColetivo||150;
   
@@ -2657,6 +2887,7 @@ function salvarConfig(){
   if(!G.config)G.config={};
   G.config.pvMinPct=pvPct;
   G.config.pvBonusUnit=pvBonus;
+  const _mx=(document.getElementById('cfgMaxParados')||{}).value; G.config.maxParados=(_mx===undefined||String(_mx).trim()==='')?'':Math.max(0,parseInt(_mx,10)||0); // v43: vazio = desligada
   S.meta=meta;salvarMetaNuvem(meta);G.config.metaColetiva=meta;
   G.config.bonusColetivo=bonus;
   G.config.faixas=novasFaixas;
@@ -3067,6 +3298,7 @@ function gerarTodasEntregas(){
 
 // ===== FUNIL / ORÇAMENTOS =====
 function renderFunil(){
+  var _af=document.getElementById('orcAguardFilter');if(_af&&!_af.options.length)_af.innerHTML=AGUARD_FILTRO;
   // v41: EM ABERTO = carteira inteira (este mes + meses anteriores). CONVERTIDOS = fechados neste mes,
   // inclusive de orcamento antigo. TAXA = dos orcamentos feitos neste mes (nao mistura meses).
   let ab=S.orcamentos.filter(o=>o.status==='aberto'||o.status==='negociacao');
@@ -3087,14 +3319,14 @@ function renderFunil(){
   document.getElementById('f-taxa').textContent=taxa+'%';
   const filter=((document.getElementById('orcFilter')||{}).value||'').toLowerCase();
   const fVend=((document.getElementById('orcVendFilter')||{}).value||'');
-  const _busca=o=>[o.cliente,o.num,o.tel,o.vendedor,o.os].some(x=>String(x||'').toLowerCase().includes(filter)); // v42: nome, nº, telefone, vendedor ou O.S.
-  let abF=ab.filter(_busca);
+  const _busca=o=>[o.cliente,o.num,o.tel,o.vendedor,o.os,o.obs,o.fornAguard].some(x=>String(x||'').toLowerCase().includes(filter)); // v42: nome, nº, telefone, vendedor ou O.S.
+  let abF=rvFiltroAguard(ab.filter(_busca),((document.getElementById('orcAguardFilter')||{}).value||'')); // v44
   if(fVend)abF=abF.filter(o=>normStr(o.vendedor)===normStr(fVend));
   document.getElementById('tbOrcs').innerHTML=abF.length?abF.map(o=>{
     const dias=Math.floor((Date.now()-dataMs(o.data))/86400000);
     const sem=dias>30?'semafor-red':dias>15?'semafor-yellow':'semafor-green';
     const stBadge=o.status==='negociacao'?'<span class="badge b-yellow">Negociação</span>':'';
-    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong> ${stBadge}${rvTagMes(o._de)}</td><td>${o.vendedor}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td><button class="btn btn-sm btn-teal" onclick="openConvModal(${o.id})">Converter</button> <button class="btn btn-sm btn-ghost" onclick="openEtapaModal(${o.id})">Status</button> <button class="btn btn-sm btn-danger" onclick="delOrcAdmin(${o.id})">Excluir</button></td></tr>`;
+    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong> ${stBadge}${rvTagMes(o._de)}${rvTagRetorno(o)}${rvTagObs(o)}</td><td>${o.vendedor}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td><button class="btn btn-sm btn-teal" onclick="openConvModal(${o.id})">Converter</button> <button class="btn btn-sm btn-ghost" onclick="openEtapaModal(${o.id})">Status</button> <button class="btn btn-sm btn-danger" onclick="delOrcAdmin(${o.id})">Excluir</button></td></tr>`;
   }).join(''):'<tr><td class="empty-row" colspan="8">Nenhum</td></tr>';
   document.getElementById('tbOrcsConv').innerHTML=(function(){
     let convF=rvFiltroOrigem(conv,_orig).filter(_busca);
@@ -3107,9 +3339,9 @@ function renderFunil(){
 // MODAL CONVERTER (substitui prompt bloqueado)
 function openConvModal(id){const o=S.orcamentos.find(x=>x.id===id);if(!o)return;document.getElementById('cmId').value=id;document.getElementById('cmCliente').textContent=o.cliente;document.getElementById('cmOS').value='';document.getElementById('convModal').classList.remove('hidden');setTimeout(()=>document.getElementById('cmOS').focus(),100);}
 function closeConvModal(){document.getElementById('convModal').classList.add('hidden');}
-function saveConv(){const id=Number(document.getElementById('cmId').value);const os=document.getElementById('cmOS').value.trim().toUpperCase();if(!os){alert('Digite a O.S.');return;}const o=S.orcamentos.find(x=>x.id===id);if(!o)return;o.status='convertido';o.os=os;o.dataConv=hojeISO();if(!S.posvenda[osBase(os)])S.posvenda[osBase(os)]={};saveData();renderAll();closeConvModal();}
-function openEtapaModal(id){const o=S.orcamentos.find(x=>x.id===id);if(!o)return;document.getElementById('emId').value=id;document.getElementById('emStatus').value=o.status;document.getElementById('emMotivo').value=o.motivoPerda||'';emToggleMotivo();document.getElementById('etapaModal').classList.remove('hidden');}
-function emToggleMotivo(){var w=document.getElementById('emMotivoWrap');if(w)w.style.display=(document.getElementById('emStatus').value==='perdido')?'':'none';}
+function saveConv(){const id=Number(document.getElementById('cmId').value);const os=document.getElementById('cmOS').value.trim().toUpperCase();if(!os){alert('Digite a O.S.');return;}const o=S.orcamentos.find(x=>x.id===id);if(!o)return;o.status='convertido';o.os=os;o.dataConv=hojeISO();o.proxContato='';o.aguardando='';o.obs='';o.fornAguard='';o.aguardDesde='';if(!S.posvenda[osBase(os)])S.posvenda[osBase(os)]={};saveData();renderAll();closeConvModal();}
+function openEtapaModal(id){const o=S.orcamentos.find(x=>x.id===id);if(!o)return;document.getElementById('emId').value=id;document.getElementById('emStatus').value=o.status;document.getElementById('emMotivo').value=o.motivoPerda||'';document.getElementById('emProx').value=rvDataISO(o.proxContato)||'';var _eag=document.getElementById('emAguard');if(_eag){if(!_eag.options.length)_eag.innerHTML=AGUARD_OPTS;_eag.value=o.aguardando||'';}document.getElementById('emObs').value=o.obs||'';document.getElementById('emForn').value=o.fornAguard||'';var _dl2=document.getElementById('rvFornList');if(_dl2)_dl2.innerHTML=(G.fornecedores||[]).map(function(f){return '<option value="'+_vgEsc(f.nome)+'">';}).join('');emToggleMotivo();document.getElementById('etapaModal').classList.remove('hidden');}
+function emToggleMotivo(){var st=document.getElementById('emStatus').value;var w=document.getElementById('emMotivoWrap');if(w)w.style.display=(st==='perdido')?'':'none';var px=document.getElementById('emProxWrap');if(px)px.style.display=(st==='aberto'||st==='negociacao')?'':'none';var ob=document.getElementById('emObsWrap');if(ob)ob.style.display=(st==='aberto'||st==='negociacao')?'':'none';}
 function closeEtapaModal(){document.getElementById('etapaModal').classList.add('hidden');}
 function saveEtapa(){
   const id=Number(document.getElementById('emId').value);
@@ -3120,6 +3352,13 @@ function saveEtapa(){
     if(st==='perdido'&&!mt){alert('Escolha o motivo da perda. É esse campo que depois te mostra onde você está perdendo dinheiro.');return;}
     o.status=st;
     o.motivoPerda=(st==='perdido')?mt:'';
+    o.proxContato=(st==='aberto'||st==='negociacao')?(document.getElementById('emProx').value||o.proxContato||''):''; // v43
+    var _agE=(st==='aberto'||st==='negociacao')?(document.getElementById('emAguard').value||''):''; // v44
+    if(_agE!==(o.aguardando||''))o.aguardDesde=_agE?hojeISO():'';
+    o.aguardando=_agE;
+    o.fornAguard=(_agE.indexOf('fornecedor')===0)?String(document.getElementById('emForn').value||'').trim().slice(0,60):''; // v45
+    if(_agE!=='gestao'){var _apE=rvAprov(o);if(_apE&&_apE.status==='pendente')o.aprov='';}
+    o.obs=(st==='aberto'||st==='negociacao')?String(document.getElementById('emObs').value||'').trim().slice(0,140):'';
     saveData();renderAll();
   }
   closeEtapaModal();
@@ -3904,17 +4143,19 @@ function renderVendOrcs(){
   const fStatus=document.getElementById('voFiltroStatus')?.value||'';
   let my=S.orcamentos.filter(o=>normStr(o.vendedor)===normStr(me.name));
   my=rvFiltroOrigem(my,rvPreencherMesOrigem('voFiltroMes',my,'<option value="">Todos os meses</option><option value="antes">Só de meses anteriores</option>')); // v42
+  var _vaf=document.getElementById('voFiltroAguard');if(_vaf&&!_vaf.options.length)_vaf.innerHTML=AGUARD_FILTRO;
+  my=rvFiltroAguard(my,_vaf?_vaf.value:''); // v44
   const ordem=document.getElementById('voOrdem')?.value||'data_desc';
   my=my.slice().sort((a,b)=>ordem==='data_asc'?dataMs(a.data)-dataMs(b.data):dataMs(b.data)-dataMs(a.data));
   if(fStatus)my=my.filter(o=>o.status===fStatus);
   if(fTxt)my=my.filter(o=>{
     const dataBR=fmtDataBR(o.data);
-    return (o.cliente||'').toLowerCase().includes(fTxt)||String(o.tel||'').toLowerCase().includes(fTxt)||String(o.num||'').toLowerCase().includes(fTxt)||String(o.valor||'').includes(fTxt)||dataBR.includes(fTxt)||(o.os||'').toLowerCase().includes(fTxt);
+    return (o.cliente||'').toLowerCase().includes(fTxt)||String(o.obs||'').toLowerCase().includes(fTxt)||String(o.tel||'').toLowerCase().includes(fTxt)||String(o.num||'').toLowerCase().includes(fTxt)||String(o.valor||'').includes(fTxt)||dataBR.includes(fTxt)||(o.os||'').toLowerCase().includes(fTxt);
   });
   document.getElementById('voOrcs').innerHTML=my.length?my.map(o=>{
     const dias=Math.floor((Date.now()-dataMs(o.data))/86400000);
     const sem=o.status==='convertido'?'semafor-green':dias>30?'semafor-red':dias>15?'semafor-yellow':'semafor-green';
-    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong>${rvTagMes(o._de)}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td>${o.os?`<code>${o.os}</code>`:'<span style="color:var(--muted)">—</span>'}</td><td>${o.conversao?`<span class="badge b-blue">${o.conversao}</span>`:'<span style="color:var(--muted)">—</span>'}</td><td><button class="btn btn-sm btn-ghost" onclick="openOrcVendModal(${o.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="delOrcVend(${o.id})">Excluir</button></td></tr>`;
+    return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${fmtDataBR(o.data)}</strong></td><td><code>${o.num||'-'}</code></td><td><strong>${o.cliente}</strong>${rvTagMes(o._de)}${rvTagRetorno(o)}${rvTagObs(o)}</td><td>${fmt(o.valor)}</td><td>${dias}d</td><td>${o.os?`<code>${o.os}</code>`:'<span style="color:var(--muted)">—</span>'}</td><td>${o.conversao?`<span class="badge b-blue">${o.conversao}</span>`:'<span style="color:var(--muted)">—</span>'}</td><td><button class="btn btn-sm btn-ghost" onclick="openOrcVendModal(${o.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="delOrcVend(${o.id})">Excluir</button></td></tr>`;
   }).join(''):'<tr><td class="empty-row" colspan="9">Nenhum encontrado</td></tr>';
 }
 function fmtDataBR(iso){if(!iso)return'-';var s=String(iso).slice(0,10);var p=s.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:String(iso).slice(0,10);}
@@ -3978,17 +4219,63 @@ function openOrcVendModal(id){
   document.getElementById('ovmOS').value=o.os||'';
   document.getElementById('ovmConv').value=o.conversao||'';
   document.getElementById('ovmMotivo').value=o.motivoPerda||'';
+  document.getElementById('ovmProx').value=rvDataISO(o.proxContato)||'';
+  var _ag=document.getElementById('ovmAguard');if(_ag){if(!_ag.options.length)_ag.innerHTML=AGUARD_OPTS;_ag.value=o.aguardando||'';}
+  document.getElementById('ovmObs').value=o.obs||'';
+  // v45: fornecedor que esta travando + pedido de aprovacao
+  var _dl=document.getElementById('rvFornList');if(_dl)_dl.innerHTML=(G.fornecedores||[]).map(function(f){return '<option value="'+_vgEsc(f.nome)+'">';}).join('');
+  document.getElementById('ovmForn').value=o.fornAguard||'';
+  var _ap=rvAprov(o)||{};
+  document.getElementById('ovmApTipo').value=_ap.tipo||'desconto';
+  document.getElementById('ovmApPct').value=_ap.pct||'';
+  document.getElementById('ovmApValor').value=_ap.valor||'';
+  document.getElementById('ovmApCond').value=_ap.cond||'';
+  document.getElementById('ovmApMotivo').value=_ap.motivo||'';
+  document.getElementById('ovmApSit').textContent=rvAprovTexto(o);
+  ovmToggleAguard();
   ovmToggleMotivo();
   document.getElementById('orcVendModal').classList.remove('hidden');
 }
 function closeOrcVendModal(){document.getElementById('orcVendModal').classList.add('hidden');}
-function ovmToggleMotivo(){var w=document.getElementById('ovmMotivoWrap');if(w)w.style.display=(document.getElementById('ovmStatus').value==='perdido')?'':'none';}
+function ovmToggleAguard(){
+  var v=(document.getElementById('ovmAguard')||{}).value||'';
+  var f=document.getElementById('ovmFornWrap');if(f)f.style.display=(v.indexOf('fornecedor')===0)?'':'none';
+  var a=document.getElementById('ovmAprovWrap');if(a)a.style.display=(v==='gestao')?'':'none';
+}
+function ovmToggleMotivo(){var st=document.getElementById('ovmStatus').value;var w=document.getElementById('ovmMotivoWrap');if(w)w.style.display=(st==='perdido')?'':'none';var px=document.getElementById('ovmProxWrap');if(px)px.style.display=(st==='aberto'||st==='negociacao')?'':'none';var ob=document.getElementById('ovmObsWrap');if(ob)ob.style.display=(st==='aberto'||st==='negociacao')?'':'none';}
 function saveOrcVendModal(){
   const id=Number(document.getElementById('ovmId').value);
   const o=S.orcamentos.find(x=>Number(x.id)===Number(id));if(!o)return;
   const _st=document.getElementById('ovmStatus').value;
   const _mt=document.getElementById('ovmMotivo').value;
   if(_st==='perdido'&&!_mt){alert('Escolha o motivo da perda antes de salvar.');return;}
+  // v43: orcamento aberto precisa de data do proximo contato (hoje ou depois)
+  const _px=document.getElementById('ovmProx').value;
+  if((_st==='aberto'||_st==='negociacao')&&!_px){alert('Marque a data do próximo contato com o cliente. Orçamento aberto sem data de retorno é cliente esquecido.');return;}
+  if((_st==='aberto'||_st==='negociacao')&&_px<hojeISO()){alert('A data do próximo contato não pode ser no passado.');return;}
+  // v45: valida antes de mexer no orcamento
+  const _abertoV=(_st==='aberto'||_st==='negociacao');
+  const _agV=_abertoV?(document.getElementById('ovmAguard').value||''):'';
+  const _fornV=String(document.getElementById('ovmForn').value||'').trim().slice(0,60);
+  if(_agV.indexOf('fornecedor')===0&&!_fornV){alert('Diga qual fornecedor ou fábrica está devendo a resposta. É assim que a gestão cobra o representante certo.');return;}
+  let _apNovo=null;
+  if(_agV==='gestao'){
+    _apNovo={tipo:document.getElementById('ovmApTipo').value,pct:Number(document.getElementById('ovmApPct').value)||'',valor:Number(document.getElementById('ovmApValor').value)||'',
+      cond:String(document.getElementById('ovmApCond').value||'').trim().slice(0,80),motivo:String(document.getElementById('ovmApMotivo').value||'').trim().slice(0,140)};
+    if(!_apNovo.motivo||(!_apNovo.pct&&!_apNovo.valor&&!_apNovo.cond)){alert('Preencha o pedido para a gestão: o que você precisa (desconto, valor final ou condição) e o motivo.');return;}
+  }
+  if(_abertoV&&_agV!==(o.aguardando||''))o.aguardDesde=_agV?hojeISO():'';
+  if(!_agV)o.aguardDesde='';
+  o.fornAguard=(_agV.indexOf('fornecedor')===0)?_fornV:'';
+  if(_apNovo){
+    const _ant=rvAprov(o);
+    const _igual=_ant&&_ant.status==='pendente'&&_ant.tipo===_apNovo.tipo&&String(_ant.pct||'')===String(_apNovo.pct||'')&&String(_ant.valor||'')===String(_apNovo.valor||'')&&(_ant.cond||'')===_apNovo.cond&&(_ant.motivo||'')===_apNovo.motivo;
+    if(!_igual){_apNovo.status='pendente';_apNovo.em=rvAgoraISO();_apNovo.quem=me.name;o.aprov=JSON.stringify(_apNovo);}
+  }else{const _ant=rvAprov(o);if(_ant&&_ant.status==='pendente')o.aprov='';} // desistiu do pedido
+  o.proxContato=(_st==='aberto'||_st==='negociacao')?_px:'';
+  // v44: pendencia + observacao (so enquanto aberto; fechou, limpa)
+  o.aguardando=(_st==='aberto'||_st==='negociacao')?(document.getElementById('ovmAguard').value||''):'';
+  o.obs=(_st==='aberto'||_st==='negociacao')?String(document.getElementById('ovmObs').value||'').trim().slice(0,140):'';
   o.status=_st;
   o.motivoPerda=(_st==='perdido')?_mt:'';
   const os=document.getElementById('ovmOS').value.trim().toUpperCase();
@@ -4332,7 +4619,7 @@ function _lgOrcamentosMeus(){
       if(o.status!=='aberto'&&o.status!=='negociacao')return;
       var k=String(o.id);
       if(visto[k])return; visto[k]=true;
-      out.push({cliente:o.cliente||'—',valor:Number(o.valor||0),dias:_lgDias(o.data),num:o.num||''});
+      out.push({id:o.id,cliente:o.cliente||'—',valor:Number(o.valor||0),dias:_lgDias(o.data),num:o.num||'',ret:rvRetorno(o),ag:o.aguardando||'',obs:String(o.obs||'').trim(),apTxt:rvAprovTexto(o)});
     });
   });
   return out;
@@ -4354,31 +4641,47 @@ function _lgClientesSumidos(){
   return Object.keys(mapa).map(function(k){var c=mapa[k];c.dias=_lgDias(c.ultima);return c;})
     .filter(function(c){return c.dias!==null&&c.dias>30;});
 }
+function lgAtualizar(id){
+  var o=S.orcamentos.find(function(x){return Number(x.id)===Number(id);});
+  if(!o){alert('Esse orçamento é de outro mês. Escolha o mês atual no topo da tela para atualizar.');return;}
+  openOrcVendModal(id);
+}
 function renderLigarHoje(){
   var alvo=document.getElementById('lgLista');
   if(!alvo||!me)return;
-  var orcs=_lgOrcamentosMeus().filter(function(o){return o.dias===null||o.dias>=10;});
-  orcs.sort(function(a,b){return (b.dias||0)-(a.dias||0);});
+  // v43: retorno marcado manda. Atrasado ou de hoje entra; marcado para o futuro sai; sem data entra a partir de 3 dias.
+  var orcs=_lgOrcamentosMeus().filter(function(o){
+    if(o.ret.st==='atrasado'||o.ret.st==='hoje')return true;
+    if(o.ret.st==='agendado')return false;
+    return o.dias===null||o.dias>=3;
+  });
+  var _pri={atrasado:0,hoje:1,sem:2};
+  orcs.sort(function(a,b){var pa=_pri[a.ret.st],pb=_pri[b.ret.st];if(pa!==pb)return pa-pb;if(a.ret.st==='atrasado')return b.ret.dias-a.ret.dias;return (b.dias||0)-(a.dias||0);});
   var sumidos=_lgClientesSumidos().sort(function(a,b){return b.dias-a.dias;});
   var total=orcs.length+sumidos.length;
   var q=document.getElementById('lgQtd');
   if(q){q.textContent=total;q.className='badge '+(total?'b-orange':'b-green');}
 
-  function linha(nome,detalhe,dias,valor){
+  function linha(nome,detalhe,dias,valor,idOrc,ret){
     var cor=(dias===null)?'var(--muted)':(dias>30?'var(--danger)':(dias>=20?'var(--orange)':'var(--teal)'));
     var txt=(dias===null)?'sem data':(dias+' dia'+(dias===1?'':'s'));
+    if(ret&&ret.st==='atrasado'){cor='var(--danger)';txt='atrasado '+ret.dias+'d';}
+    else if(ret&&ret.st==='hoje'){cor='var(--orange)';txt='retorno hoje';}
+    var bt=(idOrc!==undefined&&idOrc!==null)?'<button type="button" class="btn btn-sm btn-ghost" style="margin-top:4px;padding:3px 8px;font-size:11px" onclick="lgAtualizar('+Number(idOrc)+')">Atualizar</button>':'';
     return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)">'+
       '<div style="min-width:0"><div style="font-weight:600;font-size:14px">'+_vgEsc(nome)+'</div>'+
       '<div style="font-size:12px;color:var(--muted)">'+_vgEsc(detalhe)+'</div></div>'+
       '<div style="text-align:right;flex:0 0 auto"><div style="font-weight:700;font-size:13px">'+fmtShort(valor)+'</div>'+
-      '<div style="font-size:12px;font-weight:600;color:'+cor+'">'+txt+'</div></div></div>';
+      '<div style="font-size:12px;font-weight:600;color:'+cor+'">'+txt+'</div>'+bt+'</div></div>';
   }
 
   var html='';
   if(orcs.length){
-    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:4px 0 2px">Orçamento aberto sem resposta</div>'+
+    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:4px 0 2px">Orçamentos para retornar</div>'+
       orcs.slice(0,15).map(function(o){
-        return linha(o.cliente,(o.num?('Orçamento '+o.num+' — '):'')+'parado há '+((o.dias===null)?'?':o.dias)+' dias',o.dias,o.valor);
+        var det=o.ret.st==='atrasado'?('Retorno marcado para '+fmtDataBR(o.ret.data)+' e não feito'):(o.ret.st==='hoje'?'Retorno marcado para hoje':('Sem retorno marcado — orçado há '+((o.dias===null)?'?':o.dias)+' dias'));
+        var pend=(o.apTxt&&!/^🕓/.test(o.apTxt)?(' · '+o.apTxt):'')+(o.ag?(' · Esperando: '+(AGUARD_LABEL[o.ag]||o.ag)):'')+(o.obs?(' · '+o.obs):''); // v44/v45
+        return linha(o.cliente,(o.num?('Orçamento '+o.num+' — '):'')+det+pend,o.dias,o.valor,o.id,o.ret);
       }).join('');
   }
   if(sumidos.length){
@@ -4387,8 +4690,8 @@ function renderLigarHoje(){
         return linha(c.nome,c.compras+' compra(s) — última em '+fmtDataBR(c.ultima),c.dias,c.total);
       }).join('');
   }
-  if(!html)html='<div style="padding:14px 0;color:var(--muted);font-size:13px">Nenhuma pendência de contato. Todo orçamento aberto tem menos de 10 dias e nenhum cliente seu está há mais de 30 dias sem comprar.</div>';
-  else html+='<div style="font-size:11px;color:var(--muted);margin-top:10px">Orçamento parado há mais de 20 dias fica laranja; mais de 30, vermelho. A obra do seu cliente não espera.</div>';
+  if(!html)html='<div style="padding:14px 0;color:var(--muted);font-size:13px">Nenhuma pendência de contato. Todo orçamento aberto tem retorno marcado e nenhum cliente seu está há mais de 30 dias sem comprar.</div>';
+  else html+='<div style="font-size:11px;color:var(--muted);margin-top:10px">Clique em Atualizar e marque a data do próximo contato: o orçamento some daqui até o dia marcado. Se a data passar, ele volta vermelho.</div>';
   alvo.innerHTML=html;
 }
 
@@ -4727,6 +5030,7 @@ function renderVisao(){
     {n:par,    cor:'#A04F00', ico:_VG_SVG.alerta,   tx:'Entregas com pendência aberta', aba:'t-entregas-pend'},
     {n:pedAberto.length, cor:'#B4271F', ico:_VG_SVG.cartao, tx:'Pedidos a pagar ao fornecedor', aba:'t-pedidos'},
     {n:orcParados, cor:'#5C5A55', ico:_VG_SVG.papel, tx:'Orçamentos parados há mais de 7 dias', aba:'t-funil-leads'},
+    {n:(S.orcamentos||[]).filter(function(o){return rvOrcAberto(o)&&o.aguardando==='gestao';}).length, cor:'#B4271F', ico:_VG_SVG.alerta, tx:'Orçamentos esperando aprovação da gestão', aba:'t-funil-leads', cmd:"document.getElementById('vgAprovCard').scrollIntoView({behavior:'smooth'})"},
     {n:pvSemana, cor:'#A04F00', ico:_VG_SVG.relogio, tx:'Pós-venda ainda em aberto', aba:'t-vendas-geral'}
   ];
   var totAcao=itens.reduce(function(a,i){return a+i.n;},0);
@@ -4734,11 +5038,14 @@ function renderVisao(){
     ? totAcao+' itens parados esperando você'
     : 'Nada parado esperando você';
   document.getElementById('vgAcoes').innerHTML=itens.filter(function(i){return i.n>0;}).map(function(i){
-    return '<button type="button" class="vg-acao" onclick="vgIrPara(\''+i.aba+'\')">'+
+    return '<button type="button" class="vg-acao" onclick="'+(i.cmd||('vgIrPara(\''+i.aba+'\')'))+'">'+
       _vgIcone(i.cor,i.ico)+'<span class="vg-acao-tx">'+i.tx+'</span>'+
       '<span class="vg-acao-n">'+i.n+'</span></button>';
   }).join('')||'<div class="vg-vazio">Tudo em dia.</div>';
 
+  try{rvRenderAprov();}catch(e){console.error('rvRenderAprov',e);}
+  try{rvRenderEquipe();}catch(e){console.error('rvRenderEquipe',e);}
+  try{rvRenderForn();}catch(e){console.error('rvRenderForn',e);}
   // ---------- v42: CARTEIRA PARADA POR VENDEDOR (+30 dias sem resposta) ----------
   var _par={};
   (S.orcamentos||[]).forEach(function(o){
@@ -4800,6 +5107,120 @@ function renderVisao(){
   } else {
     card.style.display='none';
   }
+}
+// ===== v45: QUADROS DA GESTAO =====
+function rvRenderAprov(){
+  var el=document.getElementById('vgAprov');if(!el)return;
+  var pend=[],resp=[];
+  (S.orcamentos||[]).forEach(function(o){var a=rvAprov(o);if(!a)return;
+    if(a.status==='pendente'&&rvOrcAberto(o))pend.push({o:o,a:a});
+    else if(a.respEm&&(rvHorasDesde(a.respEm)||0)<=24*7&&a.em)resp.push((new Date(a.respEm)-new Date(a.em))/3600000);});
+  pend.sort(function(x,y){return new Date(x.a.em)-new Date(y.a.em);});
+  var med=resp.length?resp.reduce(function(s,h){return s+h;},0)/resp.length:null;
+  document.getElementById('vgAprovSub').textContent=(pend.length?(pend.length+' pedido'+(pend.length===1?'':'s')+' esperando você — o cliente está esperando junto.'):'Nenhum pedido esperando você.')+
+    (med!==null?(' Tempo médio de resposta nos últimos 7 dias: '+(med<1?'menos de 1h':(med<24?Math.round(med)+'h':Math.round(med/24)+' dia(s)'))+'.'):'');
+  el.innerHTML=pend.map(function(x){
+    var h=rvHorasDesde(x.a.em)||0, cor=h>=24?'#B4271F':(h>=4?'#A04F00':'#5C5A55');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--vg-linha,#E8E6DF)">'+
+      '<div style="min-width:0"><div style="font-weight:600;font-size:14px">'+_vgEsc(x.o.cliente)+' <span style="font-weight:400;color:#5C5A55;font-size:12px">· '+_vgEsc(x.o.vendedor)+' · orçamento '+fmtShort(x.o.valor)+'</span></div>'+
+      '<div style="font-size:12px;color:#5C5A55;line-height:1.4">'+_vgEsc(rvAprovResumo(x.a))+'</div>'+
+      '<div style="font-size:11px;font-weight:600;color:'+cor+'">pedido '+rvTempoTxt(x.a.em)+'</div></div>'+
+      '<button type="button" class="btn btn-sm btn-teal" style="flex:0 0 auto" onclick="abrirAprov('+Number(x.o.id)+')">Responder</button></div>';
+  }).join('');
+}
+function abrirAprov(id){
+  var o=S.orcamentos.find(function(x){return Number(x.id)===Number(id);});if(!o)return;
+  var a=rvAprov(o)||{};
+  document.getElementById('apId').value=id;
+  document.getElementById('apResp').value='';
+  document.getElementById('apResumo').innerHTML='<strong>'+_vgEsc(o.cliente)+'</strong> · '+_vgEsc(o.vendedor)+' · orçamento '+fmt(o.valor)+'<br>'+_vgEsc(rvAprovResumo(a))+
+    (o.obs?('<br><span style="color:var(--muted)">Obs.: '+_vgEsc(o.obs)+'</span>'):'')+'<br><span style="color:var(--muted)">Pedido '+rvTempoTxt(a.em)+'</span>';
+  document.getElementById('aprovModal').classList.remove('hidden');
+}
+function fecharAprov(){document.getElementById('aprovModal').classList.add('hidden');}
+function responderAprov(st){
+  var id=Number(document.getElementById('apId').value);
+  var o=S.orcamentos.find(function(x){return Number(x.id)===id;});if(!o)return;
+  var r=String(document.getElementById('apResp').value||'').trim().slice(0,140);
+  if(st!=='aprovado'&&!r){alert('Escreva a resposta para o vendedor saber o que oferecer ao cliente.');return;}
+  var a=rvAprov(o)||{};
+  a.status=st;a.resposta=r;a.respEm=rvAgoraISO();a.respQuem=me.name;
+  o.aprov=JSON.stringify(a);
+  o.aguardando='cliente';o.aguardDesde=hojeISO();o.proxContato=hojeISO(); // volta para o Ligar hoje do vendedor
+  saveData();renderAll();fecharAprov();
+}
+function rvRenderEquipe(){
+  var el=document.getElementById('vgEquipe');if(!el)return;
+  var mapa={}, add=function(n){var k=normStr(n);if(!k)return null;if(!mapa[k])mapa[k]={nome:n,atr:0,sem:0,par:0,cart:0,coorte:0,conv:0,vend:0};return mapa[k];};
+  (G.vendedores||[]).forEach(function(v){if(v&&v.papel==='vendedor')add(v.nome);});
+  (S.orcamentos||[]).forEach(function(o){
+    var m=null;
+    if(rvOrcAberto(o)){m=add(o.vendedor);if(!m)return;var r=rvRetorno(o);if(r.st==='atrasado')m.atr++;else if(r.st==='sem')m.sem++;if((rvDiasDesde(o.data)||0)>30)m.par++;m.cart+=_vgNum(o.valor);}
+    if(_doMes(o)){m=m||mapa[normStr(o.vendedor)];if(m){m.coorte++;if(o.status==='convertido')m.conv++;}}
+  });
+  (S.vendas||[]).forEach(function(v){var m=mapa[normStr(v.vendedor)];if(m)m.vend+=_vgNum(v.valor);});
+  var mesCorrente=(rvMesISO(currentMonth)===hojeISO().slice(0,7)), du=rvDiasUteisMes();
+  var lista=Object.keys(mapa).map(function(k){var m=mapa[k];m.cor=m.atr>0?'r':((m.sem>0||m.par>0)?'a':'v');return m;});
+  var ord={r:0,a:1,v:2};
+  lista.sort(function(x,y){return ord[x.cor]-ord[y.cor]||y.atr-x.atr||y.cart-x.cart;});
+  var COR={r:'#B4271F',a:'#D89A00',v:'#17795E'};
+  el.innerHTML=lista.length?lista.map(function(m){
+    var proj=(mesCorrente&&du.passados)?m.vend/du.passados*du.total:null, fx=proj!==null?calcFaixa(proj):null;
+    var ch=[];
+    if(m.atr)ch.push('<strong style="color:#B4271F">'+m.atr+' retorno'+(m.atr===1?'':'s')+' atrasado'+(m.atr===1?'':'s')+'</strong>');
+    if(m.sem)ch.push(m.sem+' sem data');
+    if(m.par)ch.push(m.par+' parado'+(m.par===1?'':'s')+' +30d');
+    ch.push('carteira '+fmtShort(m.cart));
+    ch.push('conversão '+(m.coorte?Math.round(m.conv/m.coorte*100)+'%':'—'));
+    if(proj!==null)ch.push('projeção '+fmtShort(proj)+(fx?(' ('+fx.nome+')'):' (sem faixa)'));
+    return '<button type="button" class="vg-acao" data-v="'+_vgEsc(m.nome)+'" onclick="vgVerVendedor(this.getAttribute(\'data-v\'))" style="align-items:flex-start">'+
+      '<span style="width:10px;height:10px;border-radius:50%;background:'+COR[m.cor]+';flex:0 0 auto;margin-top:5px"></span>'+
+      '<span class="vg-acao-tx" style="white-space:normal"><strong>'+_vgEsc(m.nome)+'</strong><br><span style="font-size:12px;color:#5C5A55;line-height:1.5">'+ch.join(' · ')+'</span></span></button>';
+  }).join(''):'<div class="vg-vazio">Nenhum vendedor com carteira.</div>';
+}
+function vgVerVendedor(nome){
+  vgIrPara('t-funil-leads');
+  ['orcOrigFilter','orcFilter','orcAguardFilter'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var v=document.getElementById('orcVendFilter');if(v)v.value=nome;
+  renderFunil();
+}
+function rvRenderForn(){
+  var el=document.getElementById('vgForn');if(!el)return;
+  var g={};
+  (S.orcamentos||[]).forEach(function(o){
+    if(!rvOrcAberto(o)||String(o.aguardando||'').indexOf('fornecedor')!==0)return;
+    var nome=String(o.fornAguard||'').trim()||'(fornecedor não informado)', k=normStr(nome);
+    if(!g[k])g[k]={nome:nome,qtd:0,val:0,dias:[],preco:0,prazo:0};
+    var x=g[k];x.qtd++;x.val+=_vgNum(o.valor);var d=rvDiasDesde(o.aguardDesde);if(d!==null)x.dias.push(d);
+    if(o.aguardando==='fornecedor_preco')x.preco++;else x.prazo++;
+  });
+  var l=Object.keys(g).map(function(k){return g[k];}).sort(function(a,b){return b.val-a.val;});
+  var tq=l.reduce(function(s,x){return s+x.qtd;},0), tv=l.reduce(function(s,x){return s+x.val;},0);
+  document.getElementById('vgFornSub').textContent=tq?(tq+' orçamento'+(tq===1?'':'s')+' · '+fmtShort(tv)+' parados esperando resposta de fornecedor. Clique para ver quais e cobrar o representante.'):'Nenhum orçamento esperando fornecedor.';
+  el.innerHTML=l.map(function(x){
+    var med=x.dias.length?Math.round(x.dias.reduce(function(s,d){return s+d;},0)/x.dias.length):null, mx=x.dias.length?Math.max.apply(null,x.dias):null;
+    var det=[];if(x.preco)det.push(x.preco+' esperando preço');if(x.prazo)det.push(x.prazo+' esperando prazo');
+    if(med!==null)det.push('média de '+med+' dia'+(med===1?'':'s')+' sem resposta'+(mx>med?(' (a pior: '+mx+')'):''));
+    return '<button type="button" class="vg-acao" data-v="'+_vgEsc(x.nome)+'" onclick="vgVerForn(this.getAttribute(\'data-v\'))">'+
+      '<span class="vg-acao-tx" style="white-space:normal"><strong>'+_vgEsc(x.nome)+'</strong><br><span style="font-size:12px;color:#5C5A55">'+det.join(' · ')+'</span></span>'+
+      '<span class="vg-acao-n" style="min-width:auto;padding:0 10px;white-space:nowrap">'+x.qtd+' · '+fmtShort(x.val)+'</span></button>';
+  }).join('');
+}
+function vgVerForn(nome){
+  vgIrPara('t-funil-leads');
+  ['orcOrigFilter','orcVendFilter'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var t=document.getElementById('orcFilter');if(t)t.value=(nome.charAt(0)==='(')?'':nome;
+  renderFunil();
+  var a=document.getElementById('orcAguardFilter');if(a)a.value='fornecedor';
+  renderFunil();
+}
+// v44: abre Orcamentos filtrado pelo que esta esperando (ex.: aprovacao da gestao)
+function vgVerAguardando(v){
+  vgIrPara('t-funil-leads');
+  ['orcVendFilter','orcOrigFilter','orcFilter'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  renderFunil();
+  var a=document.getElementById('orcAguardFilter');if(a){a.value=v;}
+  renderFunil();
 }
 // v42: abre Orcamentos filtrado pelo vendedor, so os de meses anteriores
 function vgVerParados(nome){
