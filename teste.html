@@ -485,6 +485,7 @@ body.rv-lateral #rvSub{display:flex}
       <div>
         <div class="vg-hero-lbl" id="vgHeroLbl">Faturamento realizado</div>
         <div class="vg-hero-val" id="vgHeroVal">R$ 0</div>
+        <div class="vg-sub" id="vgHeroRec" style="margin-top:4px"></div>
       </div>
       <div class="vg-hero-barra">
         <div class="vg-trilho"><div class="vg-preenche" id="vgFill" style="width:0%"></div></div>
@@ -563,6 +564,11 @@ body.rv-lateral #rvSub{display:flex}
       <div id="vgAprov"></div>
     </div>
 
+    <div class="vg-card" id="vgReceberCard" style="margin-bottom:18px;display:none">
+      <h3 class="vg-card-tit">Falta entrar</h3>
+      <div class="vg-sub" id="vgReceberSub" style="margin-bottom:12px">—</div>
+      <div id="vgReceber"></div>
+    </div>
     <div class="vg-card" id="vgEquipeCard" style="margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
         <h3 class="vg-card-tit">Equipe hoje</h3><span class="vg-tag">CARTEIRA</span>
@@ -941,9 +947,16 @@ body.rv-lateral #rvSub{display:flex}
       <div id="orcImportMsg" style="margin-top:12px"></div>
     </div>
     <div class="card">
-      <div class="card-hd"><h3 class="card-title">Importar Vendas (CSV)</h3></div>
-      <div class="alert alert-info">📋 O CSV deve ter colunas com: <strong>Data, OS (ou Nº/Venda), Cliente, Valor, Vendedor</strong>. A importação ignora vendas com O.S. que já existem (não duplica). Pode importar diariamente ou semanalmente — só as novas entram.</div>
-      <div class="field"><label>Arquivo CSV</label><input type="file" id="csvFile" accept=".csv" style="padding:8px"></div>
+      <div class="card-hd"><h3 class="card-title">Importar Vendas Realizadas (PDF do sistema)</h3></div>
+      <div class="alert alert-info">📄 No sistema: relatório <strong>Vendas Realizadas</strong> do mês, filtrado <strong>um vendedor por vez</strong>, baixado em PDF. Pode selecionar todos os PDFs do mês de uma vez. É o <strong>vendido</strong>: define meta, ranking e a faixa da premiação. Antes de gravar, o painel confere a soma de cada PDF com o TOTAL impresso nele.</div>
+      <div class="field"><label>PDFs de Vendas Realizadas <span style="color:var(--muted);font-weight:400">(um por vendedor — pode selecionar vários)</span></label><input type="file" id="vrPdfFiles" accept=".pdf,application/pdf" multiple style="padding:8px"></div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button class="btn btn-teal" onclick="rvImportarVendidoPdf()">📄 Ler PDFs</button></div>
+      <div id="vrImportMsg" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3 class="card-title">Importar Recebido — Comissão (PDF do sistema ou CSV)</h3></div>
+      <div class="alert alert-info">📄 No sistema: relatório <strong>Comissão do Período</strong> do mês, com todos os vendedores, baixado em PDF. É o <strong>recebido</strong>: o que entrou no caixa e a base do pagamento da premiação. O PDF substitui o mês inteiro (é o relatório completo) e só é aceito se a soma bater com o TOTAL GERAL. Devoluções e estornos (valores negativos) são descontados. Ainda aceita o CSV antigo.</div>
+      <div class="field"><label>Arquivo PDF ou CSV</label><input type="file" id="csvFile" accept=".pdf,application/pdf,.csv" style="padding:8px"></div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer"><input type="checkbox" id="modoEspelhar" style="width:auto"> <span>🔄 <strong>Modo espelhar ERP</strong> — substitui TODAS as vendas do mês pelo conteúdo do arquivo (remove as que foram excluídas no ERP). Sem isso, só adiciona as novas.</span></label>
       <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
         <button class="btn btn-teal" onclick="importCSV()">📊 Importar</button>
@@ -1118,6 +1131,10 @@ body.rv-lateral #rvSub{display:flex}
       </div>
       <div id="vd-proxFaixa" style="margin-top:14px;font-size:13px;color:var(--mid)"></div>
       <div id="vd-projecao" style="display:none;margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:8px;font-size:13px;line-height:1.5"></div>
+    </div>
+    <div class="card" id="vdExtratoCard" style="display:none">
+      <div class="card-hd"><h3 class="card-title">Extrato da minha premiação</h3><span class="badge b-blue" id="vdExtSelo">—</span></div>
+      <div id="vdExtrato"></div>
     </div>
 
     <div class="big-meta">
@@ -2018,7 +2035,8 @@ const TABELAS_S={
   indicacoes:  {sheet:'Indicacoes',   tipo:'array',  chave:'id'},
   bonificacoes:{sheet:'Bonificacoes', tipo:'array',  chave:'id'},
   rtpagtos:    {sheet:'RTPagtos',     tipo:'array',  chave:'id'},
-  posvenda:    {sheet:'PosVenda',     tipo:'objeto', chave:'osBase'}
+  posvenda:    {sheet:'PosVenda',     tipo:'objeto', chave:'osBase'},
+  vendido:     {sheet:'VendasRealizadas', tipo:'array', chave:'os'}   // v46: relatorio de Vendas Realizadas (so o admin grava)
 };
 const TABELAS_G={
   // Vendedores são geridos por addUser/removeUser/resetPassword (senha hasheada no servidor).
@@ -2028,7 +2046,7 @@ const TABELAS_G={
 // Campo que a PORTA usa como chave para apagar/gravar cada aba (pode diferir da chave do diff acima).
 const CHAVE_PORTA={
   Vendas:'os', Orcamentos:'id', Pedidos:'id', Indicacoes:'id', Bonificacoes:'id',
-  RTPagtos:'id', PosVenda:'osBase', Fornecedores:'nome', Profissionais:'nome'
+  RTPagtos:'id', PosVenda:'osBase', Fornecedores:'nome', Profissionais:'nome', VendasRealizadas:'os'
 };
 
 // ----- FILA DE GRAVAÇÃO (1 a 1, nunca em rajada — evita travar a porta) -----
@@ -2233,13 +2251,13 @@ function rvDataISO(v){
   return t;
 }
 function agruparPorMes(dadosPlanos){
-  ['vendas','orcamentos'].forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(r&&r.data)r.data=rvDataISO(r.data);if(r&&r.dataConv)r.dataConv=rvDataISO(r.dataConv);if(r&&r.proxContato)r.proxContato=rvDataISO(r.proxContato);if(r&&r.obs!==undefined&&r.obs!==null&&typeof r.obs!=='string')r.obs=String(r.obs);if(r&&r.aguardDesde)r.aguardDesde=rvDataISO(r.aguardDesde);});});
+  ['vendas','orcamentos','vendido'].forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(r&&r.data)r.data=rvDataISO(r.data);if(r&&r.dataConv)r.dataConv=rvDataISO(r.dataConv);if(r&&r.proxContato)r.proxContato=rvDataISO(r.proxContato);if(r&&r.obs!==undefined&&r.obs!==null&&typeof r.obs!=='string')r.obs=String(r.obs);if(r&&r.aguardDesde)r.aguardDesde=rvDataISO(r.aguardDesde);});});
   // v38: o Sheets transforma 5000 (texto) em numero. Sem isto, apagar/reimportar nao achava a O.S. e a tela quebrava.
-  var _txt={vendas:['os','cliente','vendedor'],orcamentos:['os','num','cliente','vendedor','tel'],pedidos:['os','cliente'],indicacoes:['os','venda'],posvenda:['osBase'],bonificacoes:['numVenda','vendedor']};
+  var _txt={vendas:['os','cliente','vendedor'],orcamentos:['os','num','cliente','vendedor','tel'],pedidos:['os','cliente'],indicacoes:['os','venda'],posvenda:['osBase'],bonificacoes:['numVenda','vendedor'],vendido:['os','cliente','vendedor','forma','codCliente']};
   Object.keys(_txt).forEach(function(tab){(dadosPlanos[tab]||[]).forEach(function(r){if(!r)return;_txt[tab].forEach(function(c){if(r[c]!==undefined&&r[c]!==null&&r[c]!==''&&typeof r[c]!=='string')r[c]=String(r[c]);});});});
   var out={};
-  MONTHS.forEach(function(m){out[m]={meta:400000,vendas:[],orcamentos:[],posvenda:{},pedidos:[],indicacoes:[],rtpagtos:[],bonificacoes:[],entregas:[]};});
-  ['vendas','orcamentos','pedidos','indicacoes','rtpagtos','bonificacoes'].forEach(function(tab){
+  MONTHS.forEach(function(m){out[m]={meta:400000,vendas:[],orcamentos:[],posvenda:{},pedidos:[],indicacoes:[],rtpagtos:[],bonificacoes:[],entregas:[],vendido:[]};});
+  ['vendas','orcamentos','pedidos','indicacoes','rtpagtos','bonificacoes','vendido'].forEach(function(tab){
     (dadosPlanos[tab]||[]).forEach(function(row){var m=row&&row.mes;if(out[m])out[m][tab].push(row);});
   });
   (dadosPlanos.posvenda||[]).forEach(function(p){if(p&&out[p.mes])out[p.mes].posvenda[osBase(p.osBase)]=p;});
@@ -2252,6 +2270,9 @@ function agruparPorMes(dadosPlanos){
     if(isFinite(_mv)&&_mv>0)out[r.mes].meta=_mv; // nunca derruba meta legitima por leitura vazia/zero
   });
   if(dadosPlanos.rankPorMes){for(var _rm in dadosPlanos.rankPorMes){if(out[_rm])out[_rm].rank=dadosPlanos.rankPorMes[_rm];}}
+  // v46: mes com relatorio de Vendas Realizadas — o ranking do vendedor passa a ser pelo VENDIDO (a porta manda so a posicao)
+  (dadosPlanos.mesesVendido||[]).forEach(function(_mv){if(out[_mv]){out[_mv]._temVendido=true;out[_mv].rank=(dadosPlanos.rankVendido&&dadosPlanos.rankVendido[_mv])||null;}});
+  MONTHS.forEach(function(_mv){if(out[_mv].vendido.length)out[_mv]._temVendido=true;});
   // ADMIN: a porta v3.9 nao manda entregasStatus no retorno admin — indexa a dataEntrega
   // direto das linhas completas de Entregas. Sem isto, o pos-venda do admin nunca liberava.
   var _idxEnt=indexarEntregasPorOS(dadosPlanos.entregas||[]);
@@ -2278,7 +2299,8 @@ function agruparPorMes(dadosPlanos){
   var _hOS=/^(os|venda|vendas|numero|número|n[º°]|ordem|num)$/i;
   var _hCli=/^(cliente|nome|descricao|descrição|client)$/i;
   MONTHS.forEach(function(m){
-    out[m].vendas=out[m].vendas.filter(function(v){return v&&v.os&&!_hOS.test(String(v.os).trim())&&Number(v.valor)>0;});
+    out[m].vendas=out[m].vendas.filter(function(v){return v&&v.os&&!_hOS.test(String(v.os).trim())&&isFinite(Number(v.valor))&&Number(v.valor)!==0;}); // v46: devolucao (negativa) desconta
+    out[m].vendido=out[m].vendido.filter(function(v){return v&&v.os&&!_hOS.test(String(v.os).trim())&&isFinite(Number(v.valor))&&Number(v.valor)!==0;}).map(function(v){v.valor=Number(v.valor);return v;});
     out[m].orcamentos=out[m].orcamentos.filter(function(o){return o&&o.cliente&&!_hCli.test(String(o.cliente).trim())&&Number(o.valor)>0;});
   });
   return out;
@@ -2297,13 +2319,13 @@ function loadGlobal(){
   _snapG=deepClone(G);
 }
 function loadData(){
-  var vazio={meta:400000,vendas:[],orcamentos:[],posvenda:{},pedidos:[],indicacoes:[],rtpagtos:[],bonificacoes:[],entregas:[]};
+  var vazio={meta:400000,vendas:[],orcamentos:[],posvenda:{},pedidos:[],indicacoes:[],rtpagtos:[],bonificacoes:[],entregas:[],vendido:[]};
   if(!_allData||!_allData[currentMonth]){S=Object.assign({},vazio);_snapS=deepClone(S);return;}
   var d=_allData[currentMonth];
   S=Object.assign({},vazio,d);
   // v41: copia as listas — antes o S apontava para o MESMO array do cache do mes, e o que era trazido de
   // meses anteriores (pedido, entrega, orcamento) ia parar dentro do mes atual e era contado duas vezes.
-  ['vendas','orcamentos','pedidos','indicacoes','rtpagtos','bonificacoes','entregas'].forEach(function(k){S[k]=(S[k]||[]).slice();});
+  ['vendas','orcamentos','pedidos','indicacoes','rtpagtos','bonificacoes','entregas','vendido'].forEach(function(k){S[k]=(S[k]||[]).slice();});
   if(!S.posvenda)S.posvenda={};
   // ROLLOVER: trazer itens nao concluidos de meses anteriores
   var _ci=MONTHS.indexOf(currentMonth);
@@ -2515,19 +2537,22 @@ function renderVendDashboard(){
   const myOrcs=S.orcamentos.filter(o=>normStr(o.vendedor)===normStr(me.name));
   const myOrcAbertos=myOrcs.filter(o=>o.status==='aberto'||o.status==='negociacao'); // v41: carteira inteira
   const myOrcConv=myOrcs.filter(rvConvNoMes);
-  const total=my.reduce((s,v)=>s+v.valor,0);
+  const _temV=rvTemVendido(currentMonth); // v46: faixa e meta pelo VENDIDO dele
+  const total=rvBaseFaixa(currentMonth,me.name);
+  const _recV=rvRecebidoMes(currentMonth,me.name);
+  const _qtdV=rvQtdVendido(currentMonth,me.name);
   const orcAbertoVal=myOrcAbertos.reduce((s,o)=>s+o.valor,0);
   const qtd=my.length;
-  const ticket=rvVendasNovas([currentMonth]).ticket; // v40: ticket da venda inteira (somando as parcelas), so dele
+  const ticket=_temV?(_qtdV?total/_qtdV:0):rvVendasNovas([currentMonth]).ticket; // v40: ticket da venda inteira (somando as parcelas), so dele
   document.getElementById('vd-vendas').textContent=fmtShort(total);
-  document.getElementById('vd-vendas-qtd').textContent=qtd+' recebimento'+(qtd!==1?'s':'')+' no mês';
+  document.getElementById('vd-vendas-qtd').textContent=_temV?(_qtdV+' venda'+(_qtdV!==1?'s':'')+' no mês · entrou '+fmt(_recV)):(qtd+' recebimento'+(qtd!==1?'s':'')+' no mês');
   document.getElementById('vd-orc-abertos').textContent=fmtShort(orcAbertoVal);
   document.getElementById('vd-orc-abertos-qtd').textContent=myOrcAbertos.length+' orçamento'+(myOrcAbertos.length!==1?'s':'');
   document.getElementById('vd-ticket').textContent=fmt(ticket);
   document.getElementById('vd-orccount').textContent=myOrcAbertos.length;
   document.getElementById('vd-convcount').textContent=myOrcConv.length;
   document.getElementById('vd-perdcount').textContent=myOrcs.filter(o=>_doMes(o)&&o.status==='perdido').length;
-  const _myCoorte=myOrcs.filter(_doMes);const orcTotV=_myCoorte.length,orcConvV=_myCoorte.filter(o=>o.status==='convertido').length;const txElV=document.getElementById('vd-txconv');if(txElV)txElV.textContent=orcTotV>0?Math.round(orcConvV/orcTotV*100)+'%':'—';const pvAberto=my.filter(v=>!S.posvenda[osBase(v.os)]||!(S.posvenda[osBase(v.os)].fotoStatus==='coletada'&&S.posvenda[osBase(v.os)].avalStatus==='coletada'&&S.posvenda[osBase(v.os)].follow30==='realizado')).length;const pvEl=document.getElementById('vd-pvaberto');if(pvEl)pvEl.textContent=pvAberto;const pvIdx=calcIndicePosvenda(me.name);const pvMin=getPvMinPct();const pvIdxEl=document.getElementById('vd-pvidx');const pvIdxSub=document.getElementById('vd-pvidx-sub');if(pvIdxEl){pvIdxEl.textContent=pvIdx+'%';pvIdxEl.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}if(pvIdxSub){pvIdxSub.textContent=pvIdx>=pvMin?'✅ Elegível':'⚠️ Mín: '+pvMin+'% | Atual: '+pvIdx+'%';pvIdxSub.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}
+  const _myCoorte=myOrcs.filter(_doMes);const orcTotV=_myCoorte.length,orcConvV=_myCoorte.filter(o=>o.status==='convertido').length;const txElV=document.getElementById('vd-txconv');if(txElV)txElV.textContent=orcTotV>0?Math.round(orcConvV/orcTotV*100)+'%':'—';const pvAberto=my.filter(v=>Number(v.valor)>0&&(!S.posvenda[osBase(v.os)]||!(S.posvenda[osBase(v.os)].fotoStatus==='coletada'&&S.posvenda[osBase(v.os)].avalStatus==='coletada'&&S.posvenda[osBase(v.os)].follow30==='realizado'))).length;const pvEl=document.getElementById('vd-pvaberto');if(pvEl)pvEl.textContent=pvAberto;const pvIdx=calcIndicePosvenda(me.name);const pvMin=getPvMinPct();const pvIdxEl=document.getElementById('vd-pvidx');const pvIdxSub=document.getElementById('vd-pvidx-sub');if(pvIdxEl){pvIdxEl.textContent=pvIdx+'%';pvIdxEl.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}if(pvIdxSub){pvIdxSub.textContent=pvIdx>=pvMin?'✅ Elegível':'⚠️ Mín: '+pvMin+'% | Atual: '+pvIdx+'%';pvIdxSub.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}
   // COFRE: o vendedor NUNCA vê a meta da loja nem o nº de vendedores (senão deduz o faturamento total).
   // O alvo dele é a PRÓXIMA FAIXA de premiação — meta 100% individual.
   const _faixasV=getFaixasAtivas();
@@ -2567,9 +2592,11 @@ function renderVendDashboard(){
   }
   // v40 COFRE: a "distancia para o 1o lugar" em R$ entregava o faturamento do colega. Agora so dados DELE.
   var _vnV=rvVendasNovas([currentMonth]);
-  if(gapEl)gapEl.textContent=_vnV.qtd;
-  if(gapSubEl)gapSubEl.textContent=_vnV.parcelas?('+ '+_vnV.parcelas+' parcela'+(_vnV.parcelas===1?'':'s')+' de vendas anteriores'):'O.S. que entraram neste mês';
+  if(gapEl)gapEl.textContent=_temV?_qtdV:_vnV.qtd;
+  if(gapSubEl&&_temV)gapSubEl.textContent='pedidos fechados no mês';
+  else if(gapSubEl)gapSubEl.textContent=_vnV.parcelas?('+ '+_vnV.parcelas+' parcela'+(_vnV.parcelas===1?'':'s')+' de vendas anteriores'):'O.S. que entraram neste mês';
   try{rvVendCarteira();}catch(e){console.error('rvVendCarteira',e);}
+  try{rvVendExtrato();}catch(e){console.error('rvVendExtrato',e);}
   try{rvVendProjecao(total);}catch(e){console.error('rvVendProjecao',e);}
   try{rvVendEuComigo();}catch(e){console.error('rvVendEuComigo',e);}
   // Diagnostico: se zero vendas, mostra o nome usado no filtro para facilitar identificar mismatch
@@ -2629,7 +2656,7 @@ function rvVendEuComigo(){
   var el=document.getElementById('vdEu');if(!el)return;
   var ci=MONTHS.indexOf(currentMonth), meu=function(o){return normStr(o.vendedor)===normStr(me.name);};
   function conv(m){var l=(m===currentMonth?(S.orcamentos||[]).filter(_doMes):(_vgDados(m).orcamentos||[])).filter(meu);if(!l.length)return null;return l.filter(function(o){return o.status==='convertido';}).length/l.length*100;}
-  function tick(m){var r=rvVendasNovas([m]);return r.qtd?r.ticket:null;}
+  function tick(m){if(rvTemVendido(m)){var q=rvQtdVendido(m,me.name);return q?rvVendidoMes(m,me.name)/q:null;}var r=rvVendasNovas([m]);return r.qtd?r.ticket:null;}
   var ant=[];for(var i=ci-1;i>=0&&ant.length<3;i--)ant.push(MONTHS[i]);
   function media(f){var v=ant.map(f).filter(function(x){return x!==null;});return v.length?v.reduce(function(a,b){return a+b;},0)/v.length:null;}
   function linha(rot,agora,med,fmtF){
@@ -2741,94 +2768,77 @@ function saveProfEdit(){
 
 // ===== RENDER ALL =====
 // ===== RELATÓRIO DE PREMIAÇÃO =====
+// v46: premiacao = % da faixa conquistada pelo VENDIDO do mes x o RECEBIDO do mes. Socio entra no quadro, mas sem pagamento.
+function rvLinhasPremiacao(){
+  const base=rvPorVendedor(currentMonth);
+  const nomes={};
+  Object.keys(base).forEach(function(n){nomes[n]=true;});
+  (S.vendas||[]).forEach(function(v){if(v&&v.vendedor)nomes[v.vendedor]=true;});
+  const totalLoja=rvBaseFaixa(currentMonth);
+  const metaOk=totalLoja>=getMetaColetiva();
+  const bnMap={};
+  S.bonificacoes.filter(_doMes).forEach(function(b){bnMap[b.vendedor]=(bnMap[b.vendedor]||0)+(b.valorPagar||0);});
+  const linhas=Object.keys(nomes).map(function(nome){
+    const P=rvPremio(nome,currentMonth);
+    const q=(base[nome]&&base[nome].qtd)||0;
+    const pvIdx=calcIndicePosvenda(nome),pvMin=getPvMinPct(),pvOk=pvIdx>=pvMin;
+    const pvBonus=calcBonusPosvenda(nome,currentMonth);
+    const _lim=rvMaxParados();const _np=_lim===null?0:rvParados30((S.orcamentos||[]).filter(function(o){return normStr(o.vendedor)===normStr(nome);})).length;const cartOk=(_lim===null||_np<=_lim);
+    const bonusCol=(metaOk&&!P.socio)?getBonusColetivo():0;
+    const bonifVal=P.socio?0:(bnMap[nome]||0);
+    const pvBonusValor=P.socio?0:pvBonus*((G.config&&G.config.pvBonusUnit)||0);
+    return {nome:nome,qtd:q,P:P,pvIdx:pvIdx,pvMin:pvMin,pvOk:pvOk,pvBonus:pvBonus,pvBonusValor:pvBonusValor,np:_np,lim:_lim,cartOk:cartOk,bonusCol:bonusCol,bonifVal:bonifVal,
+      total:P.valor+bonusCol+bonifVal};
+  }).sort(function(a,b){return b.P.base-a.P.base;});
+  return {linhas:linhas,totalLoja:totalLoja,metaOk:metaOk};
+}
 function renderRelatorio(){
   const el=document.getElementById('relPremiacao');
   if(!el)return;
-  // Agrupar vendas por vendedor
-  const vendMap={};
-  S.vendas.forEach(v=>{
-    if(!vendMap[v.vendedor])vendMap[v.vendedor]={total:0,qtd:0};
-    vendMap[v.vendedor].total+=v.valor;
-    vendMap[v.vendedor].qtd++;
+  const R=rvLinhasPremiacao(), temV=rvTemVendido(currentMonth);
+  let html='<div style="margin-bottom:16px;padding:14px;background:'+(R.metaOk?'#d1fae5':'#fee2e2')+';border-radius:8px;font-size:13px">'+
+    '<strong>🏪 '+(temV?'Vendido pela loja':'Faturamento da Loja')+': '+fmt(R.totalLoja)+'</strong> &nbsp;|&nbsp; '+
+    'Meta Coletiva R$'+(getMetaColetiva()/1000).toFixed(0)+'k: <strong>'+(R.metaOk?'✅ ATINGIDA — Bônus R$'+getBonusColetivo()+'/vendedor':'❌ Não atingida')+'</strong></div>'+
+    '<div class="alert alert-info" style="font-size:12px">'+(temV
+      ?'Regra: a <strong>faixa</strong> é conquistada pelo <strong>vendido</strong> no mês; o percentual é pago sobre o que <strong>entrou</strong> no mês. O que ainda não entrou é pago no mês em que entrar, com a faixa daquele mês. Sócios aparecem no quadro, sem pagamento.'
+      :'Este mês ainda não tem o relatório de <strong>Vendas Realizadas</strong>: a faixa está sendo medida pelo que entrou (regra antiga). Importe os PDFs de Vendas Realizadas para aplicar a regra nova.')+'</div>'+
+    '<div class="tbl-wrap"><table><thead><tr>'+
+    '<th>Vendedor</th><th>Vendas</th><th>'+(temV?'Vendido (define a faixa)':'Recebido (define a faixa)')+'</th><th>Entrou no mês (base)</th><th>Faixa</th><th>% Prêmio</th>'+
+    '<th>Prêmio Individual</th><th>Bônus Coletivo</th><th>Bonif. (louça/metal)</th><th>📋 Pós-venda</th><th>PV bônus</th><th>🏆 TOTAL</th>'+
+    '</tr></thead><tbody>';
+  let totalPremios=0;
+  R.linhas.forEach(function(L){
+    const f=L.P.faixa;
+    const pvCell='<span style="font-weight:700;color:'+(L.pvOk?'var(--success)':'var(--danger)')+'">'+L.pvIdx+'%</span><br><small style="color:var(--muted)">'+(L.pvOk?'✅ Elegível':'⚠️ '+L.pvIdx+'%/'+L.pvMin+'% mín.')+'</small>';
+    const okTot=L.pvOk&&L.cartOk;
+    if(!L.P.socio)totalPremios+=L.total;
+    html+='<tr style="'+(f?'':'color:var(--muted)')+'">'+
+      '<td><strong>'+_vgEsc(L.nome)+'</strong>'+(L.P.socio?'<br><small style="color:var(--orange)">sócio — sem pagamento</small>':'')+
+        (!L.pvOk&&!L.P.socio?'<br><small style="color:var(--danger)">⚠️ Pós-venda abaixo do mínimo</small>':'')+
+        (!L.cartOk&&!L.P.socio?'<br><small style="color:var(--danger)">⚠️ Carteira: '+L.np+' parados (limite '+L.lim+')</small>':'')+'</td>'+
+      '<td>'+L.qtd+'</td>'+
+      '<td><strong>'+fmt(L.P.base)+'</strong></td>'+
+      '<td>'+fmt(L.P.recebido)+'</td>'+
+      '<td>'+(f?f.nome:'Sem prêmio')+'</td>'+
+      '<td>'+(f?rvPctFaixa(f.pct):'—')+'</td>'+
+      '<td style="color:var(--teal);font-weight:700">'+fmt(L.P.valor)+'</td>'+
+      '<td style="color:var(--success)">'+fmt(L.bonusCol)+'</td>'+
+      '<td style="color:var(--orange)">'+fmt(L.bonifVal)+'</td>'+
+      '<td>'+pvCell+'</td>'+
+      '<td style="color:var(--teal)">'+(L.pvBonus>0&&!L.P.socio?L.pvBonus+' PV = '+fmt(L.pvBonusValor):'—')+'</td>'+
+      '<td style="background:'+(L.P.socio?'var(--bg)':(okTot?'#d1fae5':'#fee2e2'))+';font-weight:700;color:'+(L.P.socio?'var(--muted)':(okTot?'#065f46':'#991b1b'))+'">'+(L.P.socio?'—':fmt(L.total+L.pvBonusValor))+'</td>'+
+    '</tr>';
   });
-  const sorted=Object.entries(vendMap).sort((a,b)=>b[1].total-a[1].total);
-  const totalLoja=sorted.reduce((s,[,d])=>s+d.total,0);
-  const metaOk=totalLoja>=getMetaColetiva();
-  
-  // Calcular bonificações por vendedor
-  const bnMap={};
-  S.bonificacoes.filter(_doMes).forEach(b=>{
-    if(!bnMap[b.vendedor])bnMap[b.vendedor]=0;
-    bnMap[b.vendedor]+=(b.valorPagar||0);
-  });
-  
-  // Tabela de premiação
-  let html=`
-  <div style="margin-bottom:16px;padding:14px;background:${metaOk?'#d1fae5':'#fee2e2'};border-radius:8px;font-size:13px">
-    <strong>🏪 Faturamento da Loja: ${fmt(totalLoja)}</strong> &nbsp;|&nbsp; 
-    Meta Coletiva R$${(getMetaColetiva()/1000).toFixed(0)}k: <strong>${metaOk?'✅ ATINGIDA — Bônus R$'+getBonusColetivo()+'/vendedor':'❌ Não atingida'}</strong>
-  </div>
-  <div class="tbl-wrap"><table>
-    <thead>
-      <tr>
-        <th>Vendedor</th><th>Qtd Vendas</th><th>Faturamento</th><th>Faixa</th><th>% Prêmio</th>
-        <th>Prêmio Individual</th><th>Bônus Coletivo</th><th>Bonif. (louça/metal)</th><th>📋 Pós-venda</th><th>🏆 TOTAL</th>
-      </tr>
-    </thead>
-    <tbody>`;
-  
-  sorted.forEach(([nome,d])=>{
-    const faixa=calcFaixa(d.total);
-    const premio=calcPremiacao(d.total);
-    const bonifVal=bnMap[nome]||0;
-    const bonusCol=metaOk?getBonusColetivo():0;
-    const totalPremio=premio+bonusCol+bonifVal;
-    const faixaNome=faixa?faixa.nome:'Sem prêmio';
-    const pct=faixa?(faixa.pct*100).toFixed(1)+'%':'—';
-    const rowColor=faixa?'':'color:var(--muted)';
-    const pvIdx=calcIndicePosvenda(nome);const pvBonus=calcBonusPosvenda(nome,currentMonth);const pvBonusValor=pvBonus*(G.config?.pvBonusUnit||0);
-    const pvMin=getPvMinPct();
-    const pvOk=pvIdx>=pvMin;
-    const _lim=rvMaxParados();const _np=_lim===null?0:rvParados30((S.orcamentos||[]).filter(o=>normStr(o.vendedor)===normStr(nome))).length;const cartOk=(_lim===null||_np<=_lim); // v43
-    const pvCell=`<span style="font-weight:700;color:${pvOk?'var(--success)':'var(--danger)'}">${pvIdx}%</span><br><small style="color:var(--muted)">${pvOk?'✅ Elegível':'⚠️ '+pvIdx+'%/'+pvMin+'% mín.'}</small>`;
-    html+=`<tr style="${rowColor}">
-      <td><strong>${nome}</strong>${!pvOk?'<br><small style="color:var(--danger)">⚠️ Pós-venda abaixo do mínimo</small>':''}${!cartOk?'<br><small style="color:var(--danger)">⚠️ Carteira: '+_np+' parados (limite '+_lim+')</small>':''}</td>
-      <td>${d.qtd}</td>
-      <td><strong>${fmt(d.total)}</strong></td>
-      <td>${faixaNome}</td>
-      <td>${pct}</td>
-      <td style="color:var(--teal);font-weight:700">${fmt(premio)}</td>
-      <td style="color:var(--success)">${fmt(bonusCol)}</td>
-      <td style="color:var(--orange)">${fmt(bonifVal)}</td>
-      <td>${pvCell}</td>
-      <td style="color:var(--teal)">${pvBonus>0?pvBonus+' PV = '+fmt(pvBonusValor):'—'}</td>
-      <td style="background:${(pvOk&&cartOk)?'#d1fae5':'#fee2e2'};font-weight:700;color:${(pvOk&&cartOk)?'#065f46':'#991b1b'}">${fmt(totalPremio+pvBonusValor)}</td>
-    </tr>`;
-  });
-  
-  const totalPremios=sorted.reduce((s,[nome,d])=>s+calcPremiacao(d.total)+(bnMap[nome]||0)+(metaOk?getBonusColetivo():0),0);
-  html+=`<tr style="background:var(--bg);font-weight:700">
-    <td colspan="5">TOTAL A PAGAR</td>
-    <td colspan="3"></td>
-    <td style="background:#d1fae5;color:#065f46">${fmt(totalPremios)}</td>
-  </tr></tbody></table></div>`;
+  html+='<tr style="background:var(--bg);font-weight:700"><td colspan="6">TOTAL A PAGAR (sem sócios)</td><td colspan="5"></td><td style="background:#d1fae5;color:#065f46">'+fmt(totalPremios)+'</td></tr></tbody></table></div>';
   el.innerHTML=html;
 }
 
 function exportRelatorio(){
-  const vendMap={};
-  S.vendas.forEach(v=>{if(!vendMap[v.vendedor])vendMap[v.vendedor]={total:0,qtd:0};vendMap[v.vendedor].total+=v.valor;vendMap[v.vendedor].qtd++;});
-  const bnMap={};
-  S.bonificacoes.filter(_doMes).forEach(b=>{if(!bnMap[b.vendedor])bnMap[b.vendedor]=0;bnMap[b.vendedor]+=(b.valorPagar||0);});
-  const totalLoja=Object.values(vendMap).reduce((s,d)=>s+d.total,0);
-  const metaOk=totalLoja>=getMetaColetiva();
-  let csv='Vendedor;Faturamento;Faixa;Percentual;Premio Individual;Bonus Coletivo;Bonificacoes;Total a Pagar\n';
-  Object.entries(vendMap).sort((a,b)=>b[1].total-a[1].total).forEach(([nome,d])=>{
-    const f=calcFaixa(d.total);
-    const premio=calcPremiacao(d.total);
-    const bonifVal=bnMap[nome]||0;
-    const bonusCol=metaOk?getBonusColetivo():0;
-    csv+=`${nome};${d.total.toFixed(2)};${f?f.nome:'Sem premio'};${f?(f.pct*100).toFixed(1)+'%':'0%'};${premio.toFixed(2)};${bonusCol.toFixed(2)};${bonifVal.toFixed(2)};${(premio+bonusCol+bonifVal).toFixed(2)}\n`;
+  const R=rvLinhasPremiacao();
+  let csv='Vendedor;Vendido (faixa);Entrou no mes (base);Faixa;Percentual;Premio Individual;Bonus Coletivo;Bonificacoes;Total a Pagar;Obs\n';
+  R.linhas.forEach(function(L){
+    const f=L.P.faixa;
+    csv+=[L.nome,L.P.base.toFixed(2),L.P.recebido.toFixed(2),f?f.nome:'Sem premio',f?rvPctFaixa(f.pct):'0%',L.P.valor.toFixed(2),L.bonusCol.toFixed(2),L.bonifVal.toFixed(2),(L.P.socio?0:L.total).toFixed(2),L.P.socio?'socio - sem pagamento':''].join(';')+'\n';
   });
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
@@ -2904,7 +2914,7 @@ function calcIndicePosvenda(nomeVendedor){
   var ad=_allData||{};
   Object.keys(ad).forEach(function(mes){
     var d=ad[mes]||{};
-    var vendas=(d.vendas||[]).filter(function(v){return normStr(v.vendedor)===normStr(nomeVendedor);});
+    var vendas=(d.vendas||[]).filter(function(v){return normStr(v.vendedor)===normStr(nomeVendedor)&&Number(v.valor)>0;});
     var pv=d.posvenda||{};
     totalVendas+=vendas.length;
     totalCompletos+=vendas.filter(function(v){
@@ -2923,7 +2933,7 @@ function calcBonusPosvenda(nomeVendedor,mes){
   var ad=_allData||{};
   Object.keys(ad).forEach(function(m){
     var d=ad[m]||{};
-    var vendas=(d.vendas||[]).filter(function(v){return normStr(v.vendedor)===normStr(nomeVendedor);});
+    var vendas=(d.vendas||[]).filter(function(v){return normStr(v.vendedor)===normStr(nomeVendedor)&&Number(v.valor)>0;});
     var pv=d.posvenda||{};
     vendas.forEach(function(v){
       var p=pv[v.os]||{};
@@ -2956,11 +2966,12 @@ function fmtShort(v){v=Number(v||0);if(v>=1000000)return'R$ '+(v/1000000).toLoca
 
 // ===== DASHBOARD =====
 function renderDash(){
-  const total=S.vendas.reduce((s,v)=>s+v.valor,0);
+  const _temV=rvTemVendido(currentMonth); // v46: vendido quando o mes tiver o relatorio de Vendas Realizadas
+  const total=rvBaseFaixa(currentMonth);
   const prog=Math.min(100,(total/S.meta*100));
-  const qtd=S.vendas.length;
+  const qtd=_temV?rvQtdVendido(currentMonth):S.vendas.length;
   const orcAbertos=S.orcamentos.filter(o=>o.status==='aberto'||o.status==='negociacao').length;
-  const pvPend=S.vendas.filter(v=>!S.posvenda[osBase(v.os)]||S.posvenda[osBase(v.os)].follow30!=='realizado').length;
+  const pvPend=S.vendas.filter(v=>Number(v.valor)>0&&(!S.posvenda[osBase(v.os)]||S.posvenda[osBase(v.os)].follow30!=='realizado')).length;
   document.getElementById('d-meta').textContent=fmtShort(S.meta);
   // Novos cards operacionais
   const pedPend=S.pedidos.filter(p=>p.pgtStatus!=='Pago');
@@ -3019,8 +3030,7 @@ function renderDash(){
   const ctEl=document.getElementById('m-convtipos');
   if(ctEl){const partes=Object.entries(convPorTipo).map(([k,v])=>{const ab=k.replace('Venda ','');return v+' '+ab;});ctEl.textContent=partes.length?partes.join(' • '):'tipos não informados';}
   // agrupar por vendedor
-  const res={};
-  S.vendas.forEach(v=>{if(!res[v.vendedor])res[v.vendedor]={qtd:0,total:0};res[v.vendedor].qtd++;res[v.vendedor].total+=v.valor;});
+  const res=rvPorVendedor(currentMonth); // v46
   const sorted=Object.entries(res).sort((a,b)=>b[1].total-a[1].total);
   // gráfico de barras
   const maxV=sorted.length?sorted[0][1].total:1;
@@ -3056,13 +3066,13 @@ function renderResumo(){
   range.forEach(function(m){
     var d=ad[m]||{};
     var data={vendas:d.vendas||[],pedidos:d.pedidos||[],indicacoes:d.indicacoes||[]};
-    var vMes=data.vendas.reduce(function(s,v){return s+v.valor;},0);
+    var vMes=rvBaseFaixa(m); // v46: vendido quando o mes tiver o relatorio
     var fMes=data.pedidos.filter(function(p){return p.pgtStatus==='Pago';}).length;
     var rtMes=data.indicacoes.reduce(function(s,i){return s+(i.rt||0);},0);
     totVendas+=vMes;totQtd+=data.vendas.length;totRT+=rtMes;
     // pago fornecedores não tem valor monetário no pedido; exibimos qtd de pedidos pagos
     totForn+=fMes;
-    data.vendas.forEach(v=>{if(!vendAgg[v.vendedor])vendAgg[v.vendedor]={qtd:0,total:0};vendAgg[v.vendedor].qtd++;vendAgg[v.vendedor].total+=v.valor;});
+    var _pvR=rvPorVendedor(m);Object.keys(_pvR).forEach(function(n){if(!vendAgg[n])vendAgg[n]={qtd:0,total:0};vendAgg[n].qtd+=_pvR[n].qtd;vendAgg[n].total+=_pvR[n].total;});
     porMes.push({m,vendas:data.vendas.length,fat:vMes,fornPagos:fMes,rt:rtMes});
   });
   document.getElementById('r-vendas').textContent=fmtShort(totVendas);
@@ -3120,7 +3130,7 @@ function entregasFeitasSet(){
 function vendasParaEntrega(){
   var out=[],visto={};
   (S.vendas||[]).forEach(function(v){
-    if(!v||!v.os)return;
+    if(!v||!v.os||!(Number(v.valor)>0))return; // v46: devolucao nao gera entrega
     var b=osBase(v.os);if(visto[b])return;visto[b]=true;out.push(v);
   });
   var ci=MONTHS.indexOf(currentMonth);
@@ -3129,7 +3139,7 @@ function vendasParaEntrega(){
       var dm=_allData[MONTHS[mi]];
       if(!dm||!dm.vendas)continue;
       dm.vendas.forEach(function(v){
-        if(!v||!v.os)return;
+        if(!v||!v.os||!(Number(v.valor)>0))return;
         var b=osBase(v.os);if(visto[b])return;
         var sit=infoEntregaPorOS(v.os).situacao;
         // arrasta: entrega agendada, entrega parcial, ou venda marcada "entregar" que nunca foi agendada
@@ -3616,6 +3626,7 @@ function importCSV(){
   const file=document.getElementById('csvFile').files[0];
   const msg=document.getElementById('importMsg');
   if(!file){msg.innerHTML='<div class="alert alert-err">❌ Selecione arquivo</div>';return;}
+  if(/\.pdf$/i.test(file.name)){rvImportarComissaoPdf(file,msg);return;} // v46: PDF do sistema, sem conversor
   const espelhar=document.getElementById('modoEspelhar')?.checked;
   if(espelhar){if(!confirm('🔄 MODO ESPELHAR ERP ativado.\n\nIsso vai APAGAR todas as vendas atuais do mês '+currentMonth.replace('_',' ')+' e substituir pelo conteúdo do arquivo.\n\nVendas excluídas no ERP serão removidas aqui também. Confirma?'))return;S.vendas=[];}
   const reader=new FileReader();
@@ -3663,7 +3674,7 @@ function importCSV(){
       const csvVend=(r[col.vendedor]||'').trim();
       
       if(!os){linhasIgnoradas++;continue;}
-      if(isNaN(valor)||valor<=0){
+      if(isNaN(valor)||valor===0){ // v46: devolucao/estorno (negativo) entra e desconta
         console.log(`[Linha ${i+1}] OS="${os}" Valor=${valor} → ignorada (valor inválido)`);
         linhasIgnoradas++;
         continue;
@@ -3825,7 +3836,7 @@ function addVendedor(){
     function(err){console.error('[addUser]',err);alert('Falha de conexão ao cadastrar.');}
   );
 }
-function renderVendedores(){document.getElementById('tbVends').innerHTML=G.vendedores.length?G.vendedores.map(v=>{const u=v.usuario||v.user||'';const papel=v.papel||'vendedor';const tv=S.vendas.filter(x=>normStr(x.vendedor)===normStr(v.nome)).reduce((s,x)=>s+x.valor,0);const badge=papel==='admin'?'<span class="badge b-orange">admin</span>':((papel==='entrega'||papel==='motorista')?'<span class="badge" style="background:#04AFB2;color:#fff">entrega</span>':'<span class="badge b-blue">vendedor</span>');return `<tr><td><strong>${v.nome}</strong> ${badge}</td><td><code>${u}</code></td><td>${fmt(tv)}</td><td>${getFaixa(tv)}</td><td><button class="btn btn-sm btn-ghost" onclick="openVendDataModal(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Editar</button> <button class="btn btn-sm btn-ghost" onclick="openVendEditModal(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Resetar senha</button> <button class="btn btn-sm btn-danger" onclick="delVend(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Remover</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="5">Nenhum</td></tr>';}
+function renderVendedores(){document.getElementById('tbVends').innerHTML=G.vendedores.length?G.vendedores.map(v=>{const u=v.usuario||v.user||'';const papel=v.papel||'vendedor';const tv=rvBaseFaixa(currentMonth,v.nome);const badge=papel==='admin'?'<span class="badge b-orange">admin</span>':((papel==='entrega'||papel==='motorista')?'<span class="badge" style="background:#04AFB2;color:#fff">entrega</span>':'<span class="badge b-blue">vendedor</span>');return `<tr><td><strong>${v.nome}</strong> ${badge}</td><td><code>${u}</code></td><td>${fmt(tv)}</td><td>${getFaixa(tv)}</td><td><button class="btn btn-sm btn-ghost" onclick="openVendDataModal(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Editar</button> <button class="btn btn-sm btn-ghost" onclick="openVendEditModal(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Resetar senha</button> <button class="btn btn-sm btn-danger" onclick="delVend(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Remover</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="5">Nenhum</td></tr>';}
 function delVend(usuario){if(!confirm('Remover o acesso de "'+usuario+'"? A pessoa não conseguirá mais logar.'))return;chamarPorta({action:'removeUser',token:_token,usuario:usuario},function(res){if(!res||!res.ok){alert('Erro ao remover: '+((res&&res.erro)||''));return;}recarregarDaNuvem();},function(err){console.error('[removeUser]',err);alert('Falha de conexão.');});}
 
 // ===== FORNECEDORES (GLOBAL) =====
@@ -4001,7 +4012,7 @@ function vendasUnicasPV(){
     // manter cliente/vendedor da primeira; data mais antiga
     if(dataMs(v.data)<dataMs(grupos[base].data))grupos[base].data=v.data;
   });
-  return Object.values(grupos);
+  return Object.values(grupos).filter(function(g){return g.valor>0;}); // v46: devolucao nao tem pos-venda
 }
 function pvStatus(os){
   const pv=S.posvenda[osBase(os)]||{};
@@ -4104,7 +4115,7 @@ function renderVendVendas(){
   document.getElementById('vv-total').textContent=fmtShort(total);
   document.getElementById('vv-qtd').textContent=qtd;
   document.getElementById('vv-ticket').textContent=fmt(qtd>0?total/qtd:0);
-  document.getElementById('vv-faixa').textContent=getFaixa(total);
+  document.getElementById('vv-faixa').textContent=getFaixa(rvBaseFaixa(currentMonth,me.name)); // v46: faixa pelo vendido
   document.getElementById('vvVendas').innerHTML=qtd?[...my].reverse().map(v=>`<tr><td>${fmtDataBR(v.data)}</td><td>${v.cliente}</td><td><code>${v.os}</code></td><td>${fmt(v.valor)}</td></tr>`).join(''):'<tr><td class="empty-row" colspan="4">Nenhuma venda. Reimporte CSV corretamente.</td></tr>';
   popularFiltroVendEnt();
   renderVendEntregas();
@@ -4712,7 +4723,7 @@ function clientesAgregados(){
   MONTHS.forEach(function(m){
     var d=ad[m]; if(!d||!d.vendas)return;
     d.vendas.forEach(function(v){
-      if(!v||!v.cliente)return;
+      if(!v||!v.cliente||!(Number(v.valor)>0))return; // v46: devolucao nao e compra
       var k=normStr(v.cliente);
       if(!k)return;
       if(!mapa[k])mapa[k]={nome:v.cliente,compras:0,total:0,primeira:'',ultima:'',vendedores:{}};
@@ -4905,13 +4916,15 @@ function rvPrimeiroMesOS(){
   return p;
 }
 function rvVendasNovas(meses){
-  var prim=rvPrimeiroMesOS(), idx={}, novas={}, porVend={}, parcelas=0, parcVal=0;
+  var prim=rvPrimeiroMesOS(), idx={}, novas={}, porVend={}, parcelas=0, parcVal=0, somaPrim={}, dono={};
   meses.forEach(function(m){idx[MONTHS.indexOf(m)]=true;});
   meses.forEach(function(m){(_vgDados(m).vendas||[]).forEach(function(v){
     if(!v||!v.os)return; var b=osBase(v.os);
-    if(idx[prim[b]]){ if(!novas[b]){novas[b]=v.vendedor||'—';porVend[novas[b]]=(porVend[novas[b]]||0)+1;} }
+    if(idx[prim[b]]){ somaPrim[b]=(somaPrim[b]||0)+_vgNum(v.valor); if(!dono[b])dono[b]=v.vendedor||'—'; }
     else { parcelas++; parcVal+=_vgNum(v.valor); }
   });});
+  // v46: devolucao (O.S. so com valor negativo) nao e venda nova
+  Object.keys(somaPrim).forEach(function(b){if(somaPrim[b]>0){novas[b]=dono[b];porVend[dono[b]]=(porVend[dono[b]]||0)+1;}});
   // ticket: tudo o que ja entrou dessas vendas, em qualquer mes (vai se completando conforme as parcelas chegam)
   var recebido=0, recVend={};
   MONTHS.forEach(function(m){(_vgDados(m).vendas||[]).forEach(function(v){if(!v||!v.os)return;var dono=novas[osBase(v.os)];if(!dono)return;var x=_vgNum(v.valor);recebido+=x;recVend[dono]=(recVend[dono]||0)+x;});});
@@ -4928,6 +4941,348 @@ function _vgDiasUteis(){
   return n;
 }
 
+// ===== v46: LEITURA DOS RELATORIOS EM PDF DO SISTEMA (sem conversor) =====
+// O PDF do sistema e texto (fonte de largura fixa). Remonta as linhas pela altura (y) e le com regras fixas.
+// Trava: so aceita o arquivo se a soma das linhas lidas bater com o TOTAL impresso no proprio PDF.
+var RV_PDFJS_URL='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+var RV_PDFJS_WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var _rvPdfCb=null;
+function rvCarregarPdfJs(ok,falha){
+  if(window.pdfjsLib){ok(window.pdfjsLib);return;}
+  if(_rvPdfCb){_rvPdfCb.push([ok,falha]);return;}
+  _rvPdfCb=[[ok,falha]];
+  var s=document.createElement('script');s.src=RV_PDFJS_URL;
+  s.onload=function(){var l=_rvPdfCb;_rvPdfCb=null;
+    if(!window.pdfjsLib){l.forEach(function(c){c[1]('leitor de PDF não carregou');});return;}
+    try{window.pdfjsLib.GlobalWorkerOptions.workerSrc=RV_PDFJS_WORKER;}catch(e){}
+    l.forEach(function(c){c[0](window.pdfjsLib);});};
+  s.onerror=function(){var l=_rvPdfCb;_rvPdfCb=null;l.forEach(function(c){c[1]('sem internet para carregar o leitor de PDF');});};
+  document.head.appendChild(s);
+}
+// junta os pedacos de texto de cada pagina em linhas (mesma altura = mesma linha)
+function rvLinhasDoTexto(paginas){
+  var out=[];
+  paginas.forEach(function(items){
+    var grupos={},ys=[];
+    items.forEach(function(it){
+      if(!it||typeof it.str!=='string'||!it.transform)return;
+      var y=Math.round(it.transform[5]),x=it.transform[4],k=null;
+      for(var i=0;i<ys.length;i++){if(Math.abs(ys[i]-y)<=2){k=ys[i];break;}}
+      if(k===null){k=y;ys.push(y);grupos[k]=[];}
+      grupos[k].push({x:x,s:it.str});
+    });
+    ys.sort(function(a,b){return b-a;});
+    ys.forEach(function(y){
+      var l=grupos[y].sort(function(a,b){return a.x-b.x;}).map(function(p){return p.s;}).join(' ');
+      l=l.replace(/\s+/g,' ').trim();
+      if(l)out.push(l);
+    });
+  });
+  return out;
+}
+function rvNumPdf(t){var s=String(t||'').replace(/\./g,'').replace(',','.');var n=parseFloat(s);return isFinite(n)?n:NaN;}
+function rvCent(n){return Math.round(n*100);}
+var _MES_NOME=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function rvMesDoPeriodo(d1,d2){
+  var a=String(d1).split('/'),b=String(d2).split('/');
+  if(a.length!==3||b.length!==3)return {erro:'período não encontrado no PDF'};
+  if(a[1]!==b[1]||a[2]!==b[2])return {erro:'o PDF pega mais de um mês ('+d1+' a '+d2+'). Gere um PDF por mês.'};
+  var m=_MES_NOME[Number(a[1])-1];if(!m)return {erro:'mês inválido no PDF'};
+  return {mes:m+'_'+a[2],de:d1,ate:d2};
+}
+// ---- VENDAS REALIZADAS (um PDF por vendedor) ----
+function rvLerVendasRealizadas(linhas){
+  var r={tipo:'vendido',linhas:[],vendedorPdf:'',codVendedor:'',mes:'',periodo:'',totalPdf:null,qtdPdf:null,erros:[]};
+  var reLin=/^(\d{2}\/\d{2}\/\d{4}) ([A-Z]{1,4}\d+) (\S+) (?:(\d*) ?- ?)?(.*?) ?(-?[\d.]*\d,\d{2})$/;
+  var vendedores={};
+  linhas.forEach(function(l){
+    var m;
+    if((m=l.match(/VENDAS REALIZADAS DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){var p=rvMesDoPeriodo(m[1],m[2]);if(p.erro)r.erros.push(p.erro);else{r.mes=p.mes;r.periodo=p.de+' a '+p.ate;}return;}
+    if((m=l.match(/^VENDEDOR: ?(.+?) - (\d+)$/))){r.vendedorPdf=m[1].trim();r.codVendedor=m[2];vendedores[m[1].trim()]=1;return;}
+    if((m=l.match(/NUMERO DE O\.S\.: ?(\d+) .*TOTAL: ?(-?[\d.]*\d,\d{2})/))){r.qtdPdf=Number(m[1]);r.totalPdf=rvNumPdf(m[2]);return;}
+    if((m=l.match(reLin))){
+      var d=m[1].split('/');
+      r.linhas.push({data:d[2]+'-'+d[1]+'-'+d[0],os:m[2],forma:m[3],codCliente:m[4]||'',cliente:(m[5]||'').trim(),valor:rvNumPdf(m[6])});
+      return;
+    }
+    if(/^\d{2}\/\d{2}\/\d{4} /.test(l)&&!/REVESTIR/.test(l))r.erros.push('linha não entendida: '+l);
+  });
+  if(Object.keys(vendedores).length>1)r.erros.push('o PDF tem mais de um vendedor: '+Object.keys(vendedores).join(', ')+'. Baixe um PDF por vendedor.');
+  if(!r.vendedorPdf)r.erros.push('não achei o nome do vendedor no PDF');
+  if(!r.mes&&!r.erros.length)r.erros.push('não achei o período (VENDAS REALIZADAS DE ... A ...)');
+  if(r.totalPdf===null)r.erros.push('não achei o TOTAL no fim do PDF — o arquivo pode estar incompleto');
+  var soma=r.linhas.reduce(function(a,x){return a+rvCent(x.valor);},0);
+  r.somaLida=soma/100;
+  if(r.totalPdf!==null&&soma!==rvCent(r.totalPdf))r.erros.push('a soma lida ('+r.somaLida.toFixed(2)+') não bate com o TOTAL do PDF ('+r.totalPdf.toFixed(2)+')');
+  if(r.qtdPdf!==null&&r.qtdPdf!==r.linhas.length)r.erros.push('li '+r.linhas.length+' O.S., o PDF diz '+r.qtdPdf);
+  var vistos={};r.linhas.forEach(function(x){if(vistos[x.os])r.erros.push('O.S. repetida no PDF: '+x.os);vistos[x.os]=1;});
+  return r;
+}
+// ---- COMISSAO DO PERIODO (recebido; um PDF com todos os vendedores) ----
+function rvLerComissao(linhas){
+  var r={tipo:'comissao',linhas:[],mes:'',periodo:'',totalPdf:null,erros:[],somaSecoes:0,vendedoresPdf:{}};
+  var vend='',forma='',secao=0,somaSecoes=0;
+  var reLin=/^(\d{2}\/\d{2}\/\d{4}) ([A-Z]{1,4}\d+(?:\/\d+)?)(?: (.*?))? (-?[\d.]*\d,\d{2})$/;
+  linhas.forEach(function(l){
+    var m;
+    if((m=l.match(/COMISSAO DO PERIODO DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){var p=rvMesDoPeriodo(m[1],m[2]);if(p.erro){if(r.erros.indexOf(p.erro)<0)r.erros.push(p.erro);}else{r.mes=p.mes;r.periodo=p.de+' a '+p.ate;}return;}
+    if((m=l.match(/^VENDEDOR\.*: ?(.+?) - (\d+)$/))){vend=m[1].trim();r.vendedoresPdf[vend]=1;return;}
+    if((m=l.match(/^FORMA PAGAMENTO: ?(.+)$/))){forma=m[1].trim();return;}
+    if((m=l.match(/TOTAL GERAL\.*: ?(-?[\d.]*\d,\d{2})/))){r.totalPdf=rvNumPdf(m[1]);return;}
+    if((m=l.match(/^TOTAL VENDEDOR\.*: ?(-?[\d.]*\d,\d{2})$/))){somaSecoes+=rvCent(rvNumPdf(m[1]));return;}
+    if((m=l.match(reLin))){
+      if(!vend){r.erros.push('linha sem vendedor: '+l);return;}
+      var d=m[1].split('/');
+      r.linhas.push({data:d[2]+'-'+d[1]+'-'+d[0],os:m[2],cliente:(m[3]||'').trim(),valor:rvNumPdf(m[4]),vendedorPdf:vend,forma:forma});
+      return;
+    }
+    if(/^\d{2}\/\d{2}\/\d{4} /.test(l)&&!/REVESTIR/.test(l))r.erros.push('linha não entendida: '+l);
+  });
+  var soma=r.linhas.reduce(function(a,x){return a+rvCent(x.valor);},0);
+  r.somaLida=soma/100;r.somaSecoes=somaSecoes/100;
+  if(!r.mes&&!r.erros.length)r.erros.push('não achei o período (COMISSAO DO PERIODO DE ... A ...)');
+  if(r.totalPdf===null)r.erros.push('não achei o TOTAL GERAL no fim do PDF — o arquivo pode estar incompleto');
+  else if(soma!==rvCent(r.totalPdf))r.erros.push('a soma lida ('+r.somaLida.toFixed(2)+') não bate com o TOTAL GERAL do PDF ('+r.totalPdf.toFixed(2)+')');
+  if(somaSecoes&&somaSecoes!==soma)r.erros.push('a soma das linhas não bate com a soma dos TOTAL VENDEDOR');
+  return r;
+}
+// le um arquivo PDF e devolve as linhas de texto (callbacks puros, sem async/await)
+function rvLerPdfArquivo(file,ok,falha){
+  rvCarregarPdfJs(function(pdfjs){
+    var fr=new FileReader();
+    fr.onload=function(e){
+      var dados=new Uint8Array(e.target.result);
+      pdfjs.getDocument({data:dados}).promise.then(function(doc){
+        var pags=[],n=doc.numPages,i=1;
+        function prox(){
+          if(i>n){ok(rvLinhasDoTexto(pags));return;}
+          doc.getPage(i).then(function(pg){return pg.getTextContent();}).then(function(tc){pags.push(tc.items);i++;prox();},function(err){falha('erro lendo a página '+i+': '+(err&&err.message||err));});
+        }
+        prox();
+      },function(err){falha('não consegui abrir o PDF ('+(err&&err.message||err)+')');});
+    };
+    fr.onerror=function(){falha('erro de leitura do arquivo');};
+    fr.readAsArrayBuffer(file);
+  },falha);
+}
+// identifica o tipo pelo cabecalho
+function rvLerRelatorioPdf(file,ok,falha){
+  rvLerPdfArquivo(file,function(linhas){
+    var txt=linhas.slice(0,8).join(' ');
+    if(/VENDAS REALIZADAS DE/.test(txt))ok(rvLerVendasRealizadas(linhas));
+    else if(/COMISSAO DO PERIODO DE/.test(txt))ok(rvLerComissao(linhas));
+    else falha('este PDF não é o relatório de Vendas Realizadas nem o de Comissão do sistema');
+  },falha);
+}
+
+// ===== v46: VENDIDO x RECEBIDO =====
+// RECEBIDO = aba Vendas (relatorio de Comissao: o dinheiro que entrou no mes — base do pagamento).
+// VENDIDO  = aba VendasRealizadas (relatorio de Vendas Realizadas: o pedido fechado no mes, pago ou nao).
+// Regra da premiacao (Zilamar, 06/10/2026): a FAIXA e conquistada pelo VENDIDO do mes; o % e pago sobre o RECEBIDO do mes.
+// O que ainda nao entrou e pago no mes em que entrar, com a faixa daquele mes. Mes sem o relatorio de vendido usa a regra antiga (recebido).
+// Socios (Zilamar e Rogerlan) entram no ranking e no total da loja, mas nao tem pagamento de premiacao.
+var RV_SOCIOS=['zilamar','rogerlan'];
+function rvEhSocio(nome){
+  var n=normStr(nome);if(!n)return false;
+  if(RV_SOCIOS.indexOf(n.split(' ')[0])>=0)return true;
+  var u=(G.vendedores||[]).find(function(x){return x&&normStr(x.nome)===n;});
+  return !!(u&&u.papel==='admin');
+}
+function rvVendidoDe(m){return (_vgDados(m).vendido)||[];}
+function rvTemVendido(m){var d=_vgDados(m);return !!(d._temVendido||(d.vendido&&d.vendido.length));}
+function _rvSoma(lista,nome){var n=nome?normStr(nome):null,t=0;(lista||[]).forEach(function(v){if(v&&(!n||normStr(v.vendedor)===n))t+=_vgNum(v.valor);});return Math.round(t*100)/100;}
+function rvVendidoMes(m,nome){return _rvSoma(rvVendidoDe(m),nome);}
+function rvRecebidoMes(m,nome){return _rvSoma(_vgDados(m).vendas,nome);}
+// base da faixa: o vendido (quando o mes ja tem o relatorio de Vendas Realizadas); senao, o recebido
+function rvBaseFaixa(m,nome){return rvTemVendido(m)?rvVendidoMes(m,nome):rvRecebidoMes(m,nome);}
+// total e quantidade de vendas por vendedor no mes (vendido quando houver; devolucao nao conta como venda)
+function rvPorVendedor(m){
+  var tem=rvTemVendido(m), lista=tem?rvVendidoDe(m):(_vgDados(m).vendas||[]), out={};
+  lista.forEach(function(v){if(!v)return;var k=v.vendedor||'—';if(!out[k])out[k]={total:0,qtd:0};var x=_vgNum(v.valor);out[k].total+=x;if(x>0)out[k].qtd++;});
+  return out;
+}
+function rvQtdVendido(m,nome){var n=nome?normStr(nome):null;return rvVendidoDe(m).filter(function(v){return v&&_vgNum(v.valor)>0&&(!n||normStr(v.vendedor)===n);}).length;}
+// premiacao do vendedor no mes: % da faixa conquistada (vendido) x o que entrou (recebido)
+function rvPremio(nome,m){
+  m=m||currentMonth;
+  var base=rvBaseFaixa(m,nome), rec=rvRecebidoMes(m,nome), f=calcFaixa(base), socio=rvEhSocio(nome);
+  return {base:base,recebido:rec,faixa:f,socio:socio,temVendido:rvTemVendido(m),valor:(f&&!socio&&rec>0)?Math.round(rec*f.pct*100)/100:0};
+}
+// o que falta entrar: por O.S., vendido menos tudo o que ja entrou dela (em qualquer mes)
+function rvAReceber(nome){
+  var rec={},temFat=false,n=nome?normStr(nome):null;
+  MONTHS.forEach(function(m){(_vgDados(m).vendas||[]).forEach(function(v){if(!v||!v.os)return;if(/^FAT/i.test(String(v.os)))temFat=true;var b=osBase(v.os);rec[b]=(rec[b]||0)+_vgNum(v.valor);});});
+  var vend={};
+  MONTHS.forEach(function(m){rvVendidoDe(m).forEach(function(v){
+    if(!v||!v.os)return; if(n&&normStr(v.vendedor)!==n)return;
+    var b=osBase(v.os);
+    if(!vend[b])vend[b]={os:b,cliente:v.cliente,vendedor:v.vendedor,data:v.data,mes:m,forma:v.forma,vendido:0};
+    vend[b].vendido+=_vgNum(v.valor);
+  });});
+  var lista=[];
+  Object.keys(vend).forEach(function(b){var x=vend[b];x.recebido=Math.round((rec[b]||0)*100)/100;x.falta=Math.round((x.vendido-x.recebido)*100)/100;if(x.vendido>0&&x.falta>0.01)lista.push(x);});
+  lista.sort(function(a,b){return b.falta-a.falta;});
+  return {lista:lista,total:Math.round(lista.reduce(function(a,x){return a+x.falta;},0)*100)/100,temFat:temFat};
+}
+function _rvMesCurto(m){var p=String(m||'').split('_');return String(MLAB[m]||p[0]).split(' ')[0].slice(0,3).toLowerCase()+'/'+String(p[1]||'').slice(2);}
+// ---- vendedor: extrato da premiacao (so os numeros dele) ----
+function rvVendExtrato(){
+  var card=document.getElementById('vdExtratoCard'),el=document.getElementById('vdExtrato');if(!card||!el)return;
+  card.style.display='';
+  var p=rvPremio(me.name,currentMonth), ar=rvAReceber(me.name);
+  var selo=document.getElementById('vdExtSelo');
+  if(selo)selo.textContent=p.faixa?('faixa '+p.faixa.nome+' · '+rvPctFaixa(p.faixa.pct)):'sem faixa ainda';
+  var lin=function(rot,val,sub,cor){return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:13px;color:var(--mid)">'+rot+(sub?'<div style="font-size:11px;color:var(--muted)">'+sub+'</div>':'')+'</div><div style="font-size:18px;font-weight:700;white-space:nowrap;color:'+(cor||'var(--text)')+'">'+val+'</div></div>';};
+  var h='';
+  if(p.temVendido){
+    h+=lin('Vendi no mês',fmt(p.base),'é o que define a sua faixa'+(p.faixa?(': '+p.faixa.nome+' ('+rvPctFaixa(p.faixa.pct)+')'):''));
+    h+=lin('Entrou no mês',fmt(p.recebido),'é sobre isso que o percentual é pago');
+  }else{
+    h+=lin('Entrou no mês',fmt(p.recebido),'o relatório de vendas realizadas deste mês ainda não foi lançado — por enquanto a faixa é medida pelo que entrou');
+  }
+  h+=lin('Premiação prevista',fmt(p.valor),p.faixa?(rvPctFaixa(p.faixa.pct)+' × '+fmt(p.recebido)+' · sujeita às regras de pós-venda e carteira'):'ainda sem faixa de premiação','var(--teal)');
+  h+=lin('Falta entrar das suas vendas',fmt(ar.total),ar.lista.length?(ar.lista.length+' venda'+(ar.lista.length===1?'':'s')+' — vira premiação no mês em que o cliente pagar'):'tudo o que você vendeu já entrou','var(--orange)');
+  if(ar.lista.length){
+    h+='<div style="font-size:12px;color:var(--muted);margin:12px 0 6px">O.S. com dinheiro a entrar (acompanhe com o cliente):</div><div class="tbl-wrap"><table><thead><tr><th>O.S.</th><th>Cliente</th><th>Venda</th><th>Já entrou</th><th>Falta</th></tr></thead><tbody>'+
+      ar.lista.slice(0,40).map(function(x){return '<tr><td><code>'+_vgEsc(x.os)+'</code> <span class="badge b-gray" style="font-size:10px">'+_rvMesCurto(x.mes)+'</span></td><td>'+_vgEsc(x.cliente)+'</td><td>'+fmt(x.vendido)+'</td><td>'+fmt(x.recebido)+'</td><td style="font-weight:700;color:var(--orange)">'+fmt(x.falta)+'</td></tr>';}).join('')+'</tbody></table></div>';
+  }
+  el.innerHTML=h;
+}
+// ---- gestao: o que falta entrar, por vendedor e por O.S. ----
+function rvRenderReceber(){
+  var card=document.getElementById('vgReceberCard');if(!card)return;
+  if(!MONTHS.some(rvTemVendido)){card.style.display='none';return;}
+  card.style.display='';
+  var r=rvAReceber(null),porV={};
+  r.lista.forEach(function(x){var k=x.vendedor||'—';if(!porV[k])porV[k]={nome:k,n:0,v:0};porV[k].n++;porV[k].v+=x.falta;});
+  var vs=Object.keys(porV).map(function(k){return porV[k];}).sort(function(a,b){return b.v-a.v;});
+  document.getElementById('vgReceberSub').textContent=r.lista.length
+    ?(r.lista.length+' venda'+(r.lista.length===1?'':'s')+' com dinheiro a entrar — '+fmt(r.total)+'. Cada valor vira premiação no mês em que entrar.'+(r.temFat?' Recebimento lançado como fatura (FAT) não se liga à O.S.: confira essas no sistema.':''))
+    :'Tudo o que foi vendido já entrou no caixa.';
+  document.getElementById('vgReceber').innerHTML=vs.map(function(x){
+    return '<div class="vg-acao" style="cursor:default"><span class="vg-acao-tx"><strong>'+_vgEsc(x.nome)+'</strong> <span style="color:#5C5A55;font-size:12px">· '+x.n+' venda'+(x.n===1?'':'s')+'</span></span><span class="vg-acao-n" style="min-width:auto;padding:0 10px;white-space:nowrap">'+fmtShort(x.v)+'</span></div>';
+  }).join('')+(r.lista.length?'<div style="font-size:12px;color:#5C5A55;margin:12px 0 6px">Maiores valores a entrar:</div>'+r.lista.slice(0,10).map(function(x){
+    return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid #EEE"><span><code>'+_vgEsc(x.os)+'</code> '+_vgEsc(x.cliente)+' <span style="color:#5C5A55">· '+_vgEsc(x.vendedor)+' · '+_rvMesCurto(x.mes)+'</span></span><strong style="white-space:nowrap">'+fmt(x.falta)+'</strong></div>';
+  }).join(''):'');
+}
+// ---- importacao dos PDFs ----
+function _rvAlerta(tipo,html){return '<div class="alert'+(tipo?' alert-'+tipo:'')+'">'+html+'</div>';}
+function _rvListaErros(tit,erros){return _rvAlerta('err','❌ <strong>'+tit+'</strong><br>'+erros.map(function(e){return '• '+_vgEsc(e);}).join('<br>'));}
+function rvIrParaMes(m){
+  if(MONTHS.indexOf(m)<0)return false;
+  if(currentMonth!==m){currentMonth=m;var sel=document.getElementById('monthSelect');if(sel)sel.value=m;loadData();renderAll();}
+  return true;
+}
+// COMISSAO em PDF = o relatorio COMPLETO do mes (todos os vendedores): espelha o mes, guardando os campos ja preenchidos de cada O.S.
+function rvImportarComissaoPdf(file,msg){
+  msg.innerHTML=_rvAlerta('info','⏳ Lendo o PDF...');
+  rvLerRelatorioPdf(file,function(r){
+    if(r.tipo!=='comissao'){msg.innerHTML=_rvAlerta('err','❌ Este PDF é de <strong>Vendas Realizadas</strong>. Use o quadro "Importar Vendas Realizadas".');return;}
+    if(!r.erros.length&&MONTHS.indexOf(r.mes)<0)r.erros.push('o mês do PDF ('+r.periodo+') não existe no painel');
+    if(r.erros.length){msg.innerHTML=_rvListaErros('PDF recusado — nada foi gravado.',r.erros);return;}
+    var mapa={},faltam=[];
+    Object.keys(r.vendedoresPdf).forEach(function(n){var v=matchVendedor(n);if(v)mapa[n]=v;else faltam.push(n);});
+    if(faltam.length){msg.innerHTML=_rvAlerta('err','❌ Vendedor não cadastrado: <strong>'+_vgEsc(faltam.join(', '))+'</strong>. Cadastre em Equipe (ou coloque esse nome em "nome nas vendas" do vendedor) e importe de novo. <strong>Nada foi gravado.</strong>');return;}
+    var cons={},ordem=[];
+    r.linhas.forEach(function(l){var k=String(l.os).toUpperCase();if(!cons[k]){cons[k]={data:l.data,os:k,cliente:l.cliente,valor:0,vendedor:mapa[l.vendedorPdf]};ordem.push(k);}cons[k].valor=Math.round((cons[k].valor+l.valor)*100)/100;});
+    rvIrParaMes(r.mes);
+    var porOS={},porBase={},usados={};
+    S.vendas.forEach(function(v){porOS[String(v.os).toUpperCase()]=v;var b=osBase(v.os);(porBase[b]=porBase[b]||[]).push(v);});
+    var nova=[],novas=0,alt=0,igu=0,devQ=0,devV=0;
+    ordem=ordem.filter(function(k){return cons[k].valor!==0;}); // R$ 0,00 = movimento interno, nao entra
+    ordem.forEach(function(k){
+      var c=cons[k],ex=porOS[k];
+      if(c.valor<0){devQ++;devV+=c.valor;}
+      if(ex){
+        usados[k]=true;
+        if(Math.abs(_vgNum(ex.valor)-c.valor)>0.009||ex.vendedor!==c.vendedor||String(ex.cliente)!==String(c.cliente)||ex.data!==c.data)alt++;else igu++;
+        nova.push(Object.assign({},ex,{data:c.data,cliente:c.cliente,valor:c.valor,vendedor:c.vendedor}));
+      }else{
+        var r0={id:novoIdNum(),data:c.data,os:k,cliente:c.cliente,valor:c.valor,vendedor:c.vendedor};
+        var irm=(porBase[osBase(k)]||[])[0];
+        if(irm){['entregar','endereco','parcelas'].forEach(function(f){if(irm[f]!==undefined&&irm[f]!==null&&irm[f]!=='')r0[f]=irm[f];});}
+        nova.push(r0);novas++;
+      }
+    });
+    var sai=S.vendas.filter(function(v){return !usados[String(v.os).toUpperCase()];});
+    var lab=MLAB[r.mes]||r.mes;
+    var txt='Comissão de '+lab+' — total '+fmt(r.totalPdf)+' confere com o PDF.\n\n'+r.linhas.length+' linhas → '+ordem.length+' O.S.\nNovas: '+novas+' · Atualizadas: '+alt+' · Iguais: '+igu+'\nSaem (não estão mais no relatório): '+sai.length+'\nDevoluções/estornos: '+devQ+(devQ?(' ('+fmt(devV)+')'):'')+'\n\nGravar?';
+    if(!confirm(txt)){msg.innerHTML=_rvAlerta('info','Cancelado. Nada foi gravado.');return;}
+    S.vendas=nova;
+    saveData();renderAll();
+    var porV={};nova.forEach(function(v){porV[v.vendedor]=(porV[v.vendedor]||0)+_vgNum(v.valor);});
+    msg.innerHTML=_rvAlerta('','✅ <strong>Recebido de '+_vgEsc(lab)+' gravado</strong> — '+fmt(r.totalPdf)+' (confere com o PDF). '+novas+' novas · '+alt+' atualizadas · '+igu+' iguais · '+sai.length+' saíram'+(devQ?(' · '+devQ+' devoluções descontadas ('+fmt(devV)+')'):'')+'.<br><span style="font-size:12px">'+Object.keys(porV).sort(function(a,b){return porV[b]-porV[a];}).map(function(n){return _vgEsc(n)+' '+fmt(porV[n]);}).join(' · ')+'</span>');
+  },function(err){msg.innerHTML=_rvAlerta('err','❌ '+_vgEsc(err));});
+}
+// VENDAS REALIZADAS: um PDF por vendedor; varios de uma vez
+var _rvVrPend=null;
+function rvImportarVendidoPdf(){
+  var inp=document.getElementById('vrPdfFiles'),msg=document.getElementById('vrImportMsg');
+  if(!inp||!inp.files||!inp.files.length){msg.innerHTML=_rvAlerta('err','❌ Selecione os PDFs de Vendas Realizadas');return;}
+  var files=Array.prototype.slice.call(inp.files),res=[],i=0;
+  _rvVrPend=null;
+  msg.innerHTML=_rvAlerta('info','⏳ Lendo '+files.length+' PDF'+(files.length===1?'':'s')+'...');
+  function prox(){
+    if(i>=files.length){rvMostrarVendido(res,msg);return;}
+    var f=files[i++];
+    rvLerRelatorioPdf(f,function(r){r.arquivo=f.name;res.push(r);prox();},function(e){res.push({arquivo:f.name,tipo:'?',erros:[e],linhas:[]});prox();});
+  }
+  prox();
+}
+function rvMostrarVendido(res,msg){
+  var ok=[],ruins=[],meses={},vistos={};
+  res.forEach(function(r){
+    if(r.tipo==='comissao')r.erros=['este é o PDF de Comissão (recebido) — importe no quadro "Importar Recebido"'];
+    if(!r.erros.length&&MONTHS.indexOf(r.mes)<0)r.erros.push('o mês do PDF ('+r.periodo+') não existe no painel');
+    if(!r.erros.length){var v=matchVendedor(r.vendedorPdf);if(!v)r.erros.push('vendedor "'+r.vendedorPdf+'" não cadastrado — cadastre em Equipe (ou em "nome nas vendas") e leia de novo');else r.vendedor=v;}
+    if(!r.erros.length&&vistos[normStr(r.vendedor)])r.erros.push('mais de um PDF do mesmo vendedor ('+r.vendedor+')');
+    if(r.erros.length)ruins.push(r);else{ok.push(r);meses[r.mes]=1;vistos[normStr(r.vendedor)]=1;}
+  });
+  if(Object.keys(meses).length>1){ok.forEach(function(r){r.erros=['PDFs de meses diferentes juntos — leia um mês por vez'];ruins.push(r);});ok=[];}
+  var h='';
+  if(ok.length){
+    var mes=ok[0].mes,tot=0,n=0;
+    h+='<div class="alert">📄 <strong>'+_vgEsc(MLAB[mes]||mes)+'</strong> — '+ok.length+' PDF'+(ok.length===1?'':'s')+' conferido'+(ok.length===1?'':'s')+' (a soma de cada um bate com o TOTAL impresso nele).</div>';
+    h+='<div class="tbl-wrap"><table><thead><tr><th>Vendedor</th><th>Vendas</th><th>Total</th><th>Arquivo</th></tr></thead><tbody>'+
+      ok.map(function(r){var q=r.linhas.filter(function(l){return l.valor!==0;}).length;tot+=Math.round(r.somaLida*100);n+=q;return '<tr><td><strong>'+_vgEsc(r.vendedor)+'</strong>'+(rvEhSocio(r.vendedor)?' <span class="badge b-orange" style="font-size:10px">sócio</span>':'')+'</td><td>'+q+'</td><td>'+fmt(r.somaLida)+'</td><td style="font-size:11px;color:var(--muted)">'+_vgEsc(r.arquivo)+'</td></tr>';}).join('')+
+      '<tr style="font-weight:700;background:var(--bg)"><td>Total</td><td>'+n+'</td><td>'+fmt(tot/100)+'</td><td></td></tr></tbody></table></div>';
+    _rvVrPend={mes:mes,arquivos:ok};
+    h+='<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-teal" id="vrConfirmarBtn" onclick="rvConfirmarVendido()">✅ Confirmar e gravar</button><button class="btn btn-ghost" onclick="_rvVrPend=null;document.getElementById(\'vrImportMsg\').innerHTML=\'\'">Cancelar</button></div>';
+    h+='<div style="font-size:12px;color:var(--muted);margin-top:6px">Para cada vendedor lido, o mês fica igual ao PDF: entra o que é novo, atualiza o que mudou e sai a O.S. que não está mais no relatório dele. Venda de R$ 0,00 (movimento interno) não entra.</div>';
+  }
+  if(ruins.length)h+=_rvListaErros(ruins.length+' PDF'+(ruins.length===1?'':'s')+' recusado'+(ruins.length===1?'':'s')+' (não entram):',ruins.map(function(r){return r.arquivo+': '+r.erros.join('; ');}));
+  msg.innerHTML=h;
+}
+function rvConfirmarVendido(){
+  var p=_rvVrPend,msg=document.getElementById('vrImportMsg');if(!p)return;_rvVrPend=null;
+  var b=document.getElementById('vrConfirmarBtn');if(b)b.disabled=true;
+  rvIrParaMes(p.mes);
+  if(!S.vendido)S.vendido=[];
+  var nov=0,alt=0,igu=0,rem=0;
+  p.arquivos.forEach(function(r){
+    var nome=r.vendedor,n=normStr(nome),vistos={};
+    r.linhas.forEach(function(l){
+      if(!l.valor)return; // R$ 0,00 = movimento interno, nao e venda
+      var k=String(l.os).toUpperCase();vistos[k]=1;
+      var row={data:l.data,os:k,forma:l.forma,codCliente:l.codCliente,cliente:l.cliente,valor:l.valor,vendedor:nome};
+      // a O.S. so pode ter um dono: se estava com outro vendedor, passa para este
+      S.vendido=S.vendido.filter(function(v){return !(String(v.os).toUpperCase()===k&&normStr(v.vendedor)!==n);});
+      var ex=S.vendido.find(function(v){return String(v.os).toUpperCase()===k;});
+      if(ex){
+        var mud=Math.abs(_vgNum(ex.valor)-row.valor)>0.009||ex.data!==row.data||String(ex.cliente)!==row.cliente||String(ex.forma)!==row.forma;
+        if(mud){Object.assign(ex,row);alt++;}else igu++;
+      }else{row.id=novoIdNum();S.vendido.push(row);nov++;}
+    });
+    var antes=S.vendido.length;
+    S.vendido=S.vendido.filter(function(v){return normStr(v.vendedor)!==n||vistos[String(v.os).toUpperCase()];});
+    rem+=antes-S.vendido.length;
+  });
+  S._temVendido=true;
+  saveData();renderAll();
+  var lab=MLAB[p.mes]||p.mes;
+  msg.innerHTML=_rvAlerta('','✅ <strong>Vendido de '+_vgEsc(lab)+' gravado</strong> — '+nov+' novas · '+alt+' atualizadas · '+igu+' iguais · '+rem+' saíram. Total vendido do mês: <strong>'+fmt(rvVendidoMes(p.mes))+'</strong>.');
+}
+
 function renderVisao(){
   if(!document.getElementById('vgHeroVal'))return;
   var meses=_vgMeses(), periodo=(_vgModo==='periodo');
@@ -4937,10 +5292,11 @@ function renderVisao(){
   var porVend={}, porVendQtd={};
   meses.forEach(function(m){
     var d=_vgDados(m);
-    (d.vendas||[]).forEach(function(v){
-      var val=_vgNum(v.valor); fat+=val; qtd++;
-      var nome=v.vendedor||'—'; porVend[nome]=(porVend[nome]||0)+val;
-      porVendQtd[nome]=(porVendQtd[nome]||0)+1;
+    var _pv=rvPorVendedor(m); // v46: vendido quando o mes tiver o relatorio; senao, o recebido
+    Object.keys(_pv).forEach(function(nome){
+      fat+=_pv[nome].total; qtd+=_pv[nome].qtd;
+      porVend[nome]=(porVend[nome]||0)+_pv[nome].total;
+      porVendQtd[nome]=(porVendQtd[nome]||0)+_pv[nome].qtd;
     });
     (d.orcamentos||[]).forEach(function(o){ orcTot++; if(o.status==='convertido')orcConv++; });
     (d.rtpagtos||[]).forEach(function(r){ if(r.status==='Pago')rtPago+=_vgNum(r.valor); });
@@ -4951,7 +5307,10 @@ function renderVisao(){
   var metaTot=metaMes*meses.length;
   var pct=metaTot>0?Math.min(100,fat/metaTot*100):0;
 
-  document.getElementById('vgHeroLbl').textContent=periodo?'Faturamento acumulado no período':'Faturamento realizado';
+  var _todosV=meses.every(rvTemVendido), _rec=meses.reduce(function(a,m){return a+rvRecebidoMes(m);},0);
+  document.getElementById('vgHeroLbl').textContent=_todosV?(periodo?'Vendido no período':'Vendido no mês'):(periodo?'Faturamento acumulado no período':'Faturamento realizado');
+  var _hr=document.getElementById('vgHeroRec');
+  if(_hr)_hr.textContent=_todosV?('Entrou no caixa: '+fmt(_rec)+' · falta entrar de todas as vendas: '+fmt(rvAReceber(null).total)):'Valor recebido (relatório de comissão). Importe as Vendas Realizadas para ver o vendido.';
   document.getElementById('vgHeroVal').textContent=fmtShort(fat);
   document.getElementById('vgFill').style.width=pct+'%';
   var falta=Math.max(0,metaTot-fat);
@@ -4965,7 +5324,7 @@ function renderVisao(){
   var pill=document.getElementById('vgPill');
   if(periodo){
     var bateram=0;
-    meses.forEach(function(m){ var f=(_vgDados(m).vendas||[]).reduce(function(a,v){return a+_vgNum(v.valor);},0); if(f>=metaMes)bateram++; });
+    meses.forEach(function(m){ var f=rvBaseFaixa(m); if(f>=metaMes)bateram++; });
     pill.innerHTML=_vgIcone('#F5A623',_VG_SVG.subindo)+'<span>'+bateram+' de '+meses.length+' meses na meta</span>';
   } else {
     var du=_vgDiasUteis();
@@ -4978,10 +5337,11 @@ function renderVisao(){
   document.getElementById('vgG1').textContent=periodo?'VENDAS NO PERÍODO':'VENDAS NO MÊS';
   document.getElementById('vgG2').textContent=periodo?'DINHEIRO NO PERÍODO':'DINHEIRO';
   var _vn=rvVendasNovas(meses);
-  document.getElementById('vgVQtd').textContent=_vn.qtd;
-  document.getElementById('vgVTicket').textContent=fmtShort(_vn.ticket);
+  document.getElementById('vgVQtd').textContent=_todosV?qtd:_vn.qtd;
+  document.getElementById('vgVTicket').textContent=fmtShort(_todosV?(qtd?fat/qtd:0):_vn.ticket);
   var _vnSub=document.getElementById('vgVQtdSub');
-  if(_vnSub)_vnSub.textContent=(_vn.parcelas?'+ '+_vn.parcelas+' parcela'+(_vn.parcelas===1?'':'s')+' de vendas anteriores ('+fmtShort(_vn.parcVal)+')':'nenhuma parcela de venda anterior')+
+  if(_vnSub&&_todosV)_vnSub.textContent='pedidos fechados (relatório de Vendas Realizadas) · devolução não conta como venda';
+  else if(_vnSub)_vnSub.textContent=(_vn.parcelas?'+ '+_vn.parcelas+' parcela'+(_vn.parcelas===1?'':'s')+' de vendas anteriores ('+fmtShort(_vn.parcVal)+')':'nenhuma parcela de venda anterior')+
     (meses.indexOf(_vn.primeiroMes)>=0?' · no 1º mês lançado, tudo conta como venda nova':'');
   document.getElementById('vgVConv').textContent=orcTot>0?Math.round(orcConv/orcTot*100)+'%':'—';
   document.getElementById('vgDPago').textContent=fmtShort(pedPagoVal);
@@ -5012,6 +5372,7 @@ function renderVisao(){
   document.getElementById('vgEPar').textContent=par;
   document.getElementById('vgECon').textContent=con;
   var pvPend=(S.vendas||[]).filter(function(v){
+    if(!(_vgNum(v.valor)>0))return false;
     var pv=(S.posvenda||{})[osBase(v.os)]; return !pv||pv.follow30!=='realizado';
   }).length;
   document.getElementById('vgEPv').textContent=pvPend;
@@ -5045,6 +5406,7 @@ function renderVisao(){
 
   try{rvRenderAprov();}catch(e){console.error('rvRenderAprov',e);}
   try{rvRenderEquipe();}catch(e){console.error('rvRenderEquipe',e);}
+  try{rvRenderReceber();}catch(e){console.error('rvRenderReceber',e);}
   try{rvRenderForn();}catch(e){console.error('rvRenderForn',e);}
   // ---------- v42: CARTEIRA PARADA POR VENDEDOR (+30 dias sem resposta) ----------
   var _par={};
@@ -5074,14 +5436,14 @@ function renderVisao(){
   var _cvV=rvConversao(meses);
   document.getElementById('vgRank').innerHTML=lista.length?lista.map(function(r){
     var w=maxV>0?Math.max(2,Math.round(r.val/maxV*100)):0;
-    var q=_vn.porVend[r.nome]||0;
+    var q=_todosV?(porVendQtd[r.nome]||0):(_vn.porVend[r.nome]||0);
     var c=_cvV[normStr(r.nome)];
     var conv=(c&&c.tot)?(Math.round(c.conv/c.tot*100)+'% de conversão'):'sem orçamento registrado';
     return '<div style="margin-bottom:10px">'+
       '<div class="vg-barra-linha" style="margin-bottom:2px"><span class="vg-barra-nome" title="'+_vgEsc(r.nome)+'">'+_vgEsc(r.nome)+'</span>'+
       '<span class="vg-barra-trilho"><span class="vg-barra-fill" style="display:block;width:'+w+'%"></span></span>'+
       '<span class="vg-barra-val">'+fmtShort(r.val)+'</span></div>'+
-      '<div style="font-size:11px;color:var(--vg-sec,#5C5A55);padding-left:2px">'+q+' venda'+(q===1?'':'s')+' nova'+(q===1?'':'s')+' · ticket '+fmtShort(q?(_vn.recVend[r.nome]||0)/q:0)+' · '+conv+'</div></div>';
+      '<div style="font-size:11px;color:var(--vg-sec,#5C5A55);padding-left:2px">'+q+' venda'+(q===1?'':'s')+' nova'+(q===1?'':'s')+' · ticket '+fmtShort(q?(_todosV?r.val:(_vn.recVend[r.nome]||0))/q:0)+' · '+conv+(rvEhSocio(r.nome)?' · sócio':'')+'</div></div>';
   }).join(''):'<div class="vg-vazio">Sem vendas no período.</div>';
 
   // ---------- GRAFICO MES A MES (so no modo periodo) ----------
@@ -5089,7 +5451,7 @@ function renderVisao(){
   if(periodo&&meses.length>1){
     card.style.display='';
     var vals=meses.map(function(m){
-      return (_vgDados(m).vendas||[]).reduce(function(a,v){return a+_vgNum(v.valor);},0);
+      return rvBaseFaixa(m);
     });
     var topo=Math.max(metaMes,Math.max.apply(null,vals.concat([1])));
     var iAtual=meses.indexOf(currentMonth);
@@ -5158,7 +5520,7 @@ function rvRenderEquipe(){
     if(rvOrcAberto(o)){m=add(o.vendedor);if(!m)return;var r=rvRetorno(o);if(r.st==='atrasado')m.atr++;else if(r.st==='sem')m.sem++;if((rvDiasDesde(o.data)||0)>30)m.par++;m.cart+=_vgNum(o.valor);}
     if(_doMes(o)){m=m||mapa[normStr(o.vendedor)];if(m){m.coorte++;if(o.status==='convertido')m.conv++;}}
   });
-  (S.vendas||[]).forEach(function(v){var m=mapa[normStr(v.vendedor)];if(m)m.vend+=_vgNum(v.valor);});
+  (rvTemVendido(currentMonth)?rvVendidoDe(currentMonth):(S.vendas||[])).forEach(function(v){var m=mapa[normStr(v.vendedor)];if(m)m.vend+=_vgNum(v.valor);}); // v46
   var mesCorrente=(rvMesISO(currentMonth)===hojeISO().slice(0,7)), du=rvDiasUteisMes();
   var lista=Object.keys(mapa).map(function(k){var m=mapa[k];m.cor=m.atr>0?'r':((m.sem>0||m.par>0)?'a':'v');return m;});
   var ord={r:0,a:1,v:2};
