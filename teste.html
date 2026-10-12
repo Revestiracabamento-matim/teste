@@ -1781,7 +1781,7 @@ function chamarPorta(payload, onOk, onErr){
   .catch(function(e){onErr(e);});
 }
 
-// MESES DINAMICOS: de maio_2026 (inicio dos dados) ate dezembro do ano seguinte ao atual.
+// MESES DINAMICOS: de janeiro_2026 (v47: historico do ano todo) ate dezembro do ano seguinte ao atual.
 // Antes era lista fixa ate dezembro_2026 — em janeiro/2027 o dashboard cairia no fallback
 // e passaria a gravar tudo em dezembro_2026 (o mesmo bug do maio_2026 fixo, adiado).
 // agruparPorMes DESCARTA linha cujo mes nao esta em MONTHS: a lista precisa cobrir todo dado existente.
@@ -1793,7 +1793,6 @@ function _gerarMesesDash(){
   if(fimAno<2026)fimAno=2026;
   for(var a=2026;a<=fimAno;a++){
     for(var m=0;m<12;m++){
-      if(a===2026&&m<4)continue;
       var k=nomes[m]+'_'+a;
       lista.push(k);
       labels[k]=rotulos[m]+' '+a;
@@ -4983,34 +4982,42 @@ function rvLinhasDoTexto(paginas){
 function rvNumPdf(t){var s=String(t||'').replace(/\./g,'').replace(',','.');var n=parseFloat(s);return isFinite(n)?n:NaN;}
 function rvCent(n){return Math.round(n*100);}
 var _MES_NOME=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function _rvIsoBR(d){var a=String(d).split('/');return a.length===3?(a[2]+'-'+a[1]+'-'+a[0]):'';}
+function _rvMesDaData(iso){var a=String(iso).split('-');var n=_MES_NOME[Number(a[1])-1];return n?(n+'_'+a[0]):'';}
+// v47: o PDF pode pegar varios meses (ex.: 01/01 a 11/10). Cada linha vai para o mes da propria data.
 function rvMesDoPeriodo(d1,d2){
-  var a=String(d1).split('/'),b=String(d2).split('/');
-  if(a.length!==3||b.length!==3)return {erro:'período não encontrado no PDF'};
-  if(a[1]!==b[1]||a[2]!==b[2])return {erro:'o PDF pega mais de um mês ('+d1+' a '+d2+'). Gere um PDF por mês.'};
-  var m=_MES_NOME[Number(a[1])-1];if(!m)return {erro:'mês inválido no PDF'};
-  return {mes:m+'_'+a[2],de:d1,ate:d2};
+  var de=_rvIsoBR(d1),ate=_rvIsoBR(d2);
+  if(!de||!ate)return {erro:'período não encontrado no PDF'};
+  if(ate<de)return {erro:'período invertido no PDF ('+d1+' a '+d2+')'};
+  var meses=[],y=Number(de.slice(0,4)),m=Number(de.slice(5,7)),yf=Number(ate.slice(0,4)),mf=Number(ate.slice(5,7));
+  while(y<yf||(y===yf&&m<=mf)){meses.push(_MES_NOME[m-1]+'_'+y);m++;if(m>12){m=1;y++;}}
+  return {mes:meses[0],meses:meses,de:de,ate:ate,periodo:d1+' a '+d2};
 }
-// ---- VENDAS REALIZADAS (um PDF por vendedor) ----
+function _rvAplicaPeriodo(r,p){if(p.erro){if(r.erros.indexOf(p.erro)<0)r.erros.push(p.erro);return;}r.mes=p.mes;r.meses=p.meses;r.de=p.de;r.ate=p.ate;r.periodo=p.periodo;}
+function _rvConfereDatas(r){
+  r.linhas.forEach(function(x){x.mes=_rvMesDaData(x.data);if(r.de&&(x.data<r.de||x.data>r.ate))r.erros.push('linha fora do período do PDF: '+x.os+' em '+x.data);});
+}
+// ---- VENDAS REALIZADAS (um PDF por vendedor; um mes ou varios) ----
 function rvLerVendasRealizadas(linhas){
-  var r={tipo:'vendido',linhas:[],vendedorPdf:'',codVendedor:'',mes:'',periodo:'',totalPdf:null,qtdPdf:null,erros:[]};
+  var r={tipo:'vendido',linhas:[],vendedorPdf:'',codVendedor:'',mes:'',meses:[],de:'',ate:'',periodo:'',totalPdf:null,qtdPdf:null,erros:[]};
   var reLin=/^(\d{2}\/\d{2}\/\d{4}) ([A-Z]{1,4}\d+) (\S+) (?:(\d*) ?- ?)?(.*?) ?(-?[\d.]*\d,\d{2})$/;
   var vendedores={};
   linhas.forEach(function(l){
     var m;
-    if((m=l.match(/VENDAS REALIZADAS DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){var p=rvMesDoPeriodo(m[1],m[2]);if(p.erro)r.erros.push(p.erro);else{r.mes=p.mes;r.periodo=p.de+' a '+p.ate;}return;}
+    if((m=l.match(/VENDAS REALIZADAS DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){if(!r.periodo)_rvAplicaPeriodo(r,rvMesDoPeriodo(m[1],m[2]));return;}
     if((m=l.match(/^VENDEDOR: ?(.+?) - (\d+)$/))){r.vendedorPdf=m[1].trim();r.codVendedor=m[2];vendedores[m[1].trim()]=1;return;}
     if((m=l.match(/NUMERO DE O\.S\.: ?(\d+) .*TOTAL: ?(-?[\d.]*\d,\d{2})/))){r.qtdPdf=Number(m[1]);r.totalPdf=rvNumPdf(m[2]);return;}
     if((m=l.match(reLin))){
-      var d=m[1].split('/');
-      r.linhas.push({data:d[2]+'-'+d[1]+'-'+d[0],os:m[2],forma:m[3],codCliente:m[4]||'',cliente:(m[5]||'').trim(),valor:rvNumPdf(m[6])});
+      r.linhas.push({data:_rvIsoBR(m[1]),os:m[2],forma:m[3],codCliente:m[4]||'',cliente:(m[5]||'').trim(),valor:rvNumPdf(m[6])});
       return;
     }
     if(/^\d{2}\/\d{2}\/\d{4} /.test(l)&&!/REVESTIR/.test(l))r.erros.push('linha não entendida: '+l);
   });
   if(Object.keys(vendedores).length>1)r.erros.push('o PDF tem mais de um vendedor: '+Object.keys(vendedores).join(', ')+'. Baixe um PDF por vendedor.');
   if(!r.vendedorPdf)r.erros.push('não achei o nome do vendedor no PDF');
-  if(!r.mes&&!r.erros.length)r.erros.push('não achei o período (VENDAS REALIZADAS DE ... A ...)');
+  if(!r.periodo&&!r.erros.length)r.erros.push('não achei o período (VENDAS REALIZADAS DE ... A ...)');
   if(r.totalPdf===null)r.erros.push('não achei o TOTAL no fim do PDF — o arquivo pode estar incompleto');
+  _rvConfereDatas(r);
   var soma=r.linhas.reduce(function(a,x){return a+rvCent(x.valor);},0);
   r.somaLida=soma/100;
   if(r.totalPdf!==null&&soma!==rvCent(r.totalPdf))r.erros.push('a soma lida ('+r.somaLida.toFixed(2)+') não bate com o TOTAL do PDF ('+r.totalPdf.toFixed(2)+')');
@@ -5018,29 +5025,29 @@ function rvLerVendasRealizadas(linhas){
   var vistos={};r.linhas.forEach(function(x){if(vistos[x.os])r.erros.push('O.S. repetida no PDF: '+x.os);vistos[x.os]=1;});
   return r;
 }
-// ---- COMISSAO DO PERIODO (recebido; um PDF com todos os vendedores) ----
+// ---- COMISSAO DO PERIODO (recebido; um PDF com todos os vendedores; um mes ou varios) ----
 function rvLerComissao(linhas){
-  var r={tipo:'comissao',linhas:[],mes:'',periodo:'',totalPdf:null,erros:[],somaSecoes:0,vendedoresPdf:{}};
-  var vend='',forma='',secao=0,somaSecoes=0;
+  var r={tipo:'comissao',linhas:[],mes:'',meses:[],de:'',ate:'',periodo:'',totalPdf:null,erros:[],somaSecoes:0,vendedoresPdf:{}};
+  var vend='',forma='',somaSecoes=0;
   var reLin=/^(\d{2}\/\d{2}\/\d{4}) ([A-Z]{1,4}\d+(?:\/\d+)?)(?: (.*?))? (-?[\d.]*\d,\d{2})$/;
   linhas.forEach(function(l){
     var m;
-    if((m=l.match(/COMISSAO DO PERIODO DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){var p=rvMesDoPeriodo(m[1],m[2]);if(p.erro){if(r.erros.indexOf(p.erro)<0)r.erros.push(p.erro);}else{r.mes=p.mes;r.periodo=p.de+' a '+p.ate;}return;}
+    if((m=l.match(/COMISSAO DO PERIODO DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){if(!r.periodo)_rvAplicaPeriodo(r,rvMesDoPeriodo(m[1],m[2]));return;}
     if((m=l.match(/^VENDEDOR\.*: ?(.+?) - (\d+)$/))){vend=m[1].trim();r.vendedoresPdf[vend]=1;return;}
     if((m=l.match(/^FORMA PAGAMENTO: ?(.+)$/))){forma=m[1].trim();return;}
     if((m=l.match(/TOTAL GERAL\.*: ?(-?[\d.]*\d,\d{2})/))){r.totalPdf=rvNumPdf(m[1]);return;}
     if((m=l.match(/^TOTAL VENDEDOR\.*: ?(-?[\d.]*\d,\d{2})$/))){somaSecoes+=rvCent(rvNumPdf(m[1]));return;}
     if((m=l.match(reLin))){
       if(!vend){r.erros.push('linha sem vendedor: '+l);return;}
-      var d=m[1].split('/');
-      r.linhas.push({data:d[2]+'-'+d[1]+'-'+d[0],os:m[2],cliente:(m[3]||'').trim(),valor:rvNumPdf(m[4]),vendedorPdf:vend,forma:forma});
+      r.linhas.push({data:_rvIsoBR(m[1]),os:m[2],cliente:(m[3]||'').trim(),valor:rvNumPdf(m[4]),vendedorPdf:vend,forma:forma});
       return;
     }
     if(/^\d{2}\/\d{2}\/\d{4} /.test(l)&&!/REVESTIR/.test(l))r.erros.push('linha não entendida: '+l);
   });
+  _rvConfereDatas(r);
   var soma=r.linhas.reduce(function(a,x){return a+rvCent(x.valor);},0);
   r.somaLida=soma/100;r.somaSecoes=somaSecoes/100;
-  if(!r.mes&&!r.erros.length)r.erros.push('não achei o período (COMISSAO DO PERIODO DE ... A ...)');
+  if(!r.periodo&&!r.erros.length)r.erros.push('não achei o período (COMISSAO DO PERIODO DE ... A ...)');
   if(r.totalPdf===null)r.erros.push('não achei o TOTAL GERAL no fim do PDF — o arquivo pode estar incompleto');
   else if(soma!==rvCent(r.totalPdf))r.erros.push('a soma lida ('+r.somaLida.toFixed(2)+') não bate com o TOTAL GERAL do PDF ('+r.totalPdf.toFixed(2)+')');
   if(somaSecoes&&somaSecoes!==soma)r.erros.push('a soma das linhas não bate com a soma dos TOTAL VENDEDOR');
@@ -5173,48 +5180,66 @@ function rvIrParaMes(m){
   if(currentMonth!==m){currentMonth=m;var sel=document.getElementById('monthSelect');if(sel)sel.value=m;loadData();renderAll();}
   return true;
 }
-// COMISSAO em PDF = o relatorio COMPLETO do mes (todos os vendedores): espelha o mes, guardando os campos ja preenchidos de cada O.S.
+// v47: troca de mes sem redesenhar a tela (usado na gravacao de varios meses de uma vez)
+function _rvTrocaMes(m){if(currentMonth!==m){currentMonth=m;var sel=document.getElementById('monthSelect');if(sel)sel.value=m;loadData();}}
+function _rvForaDoMes(r){return (r.meses||[]).filter(function(m){return MONTHS.indexOf(m)<0;});}
+function _rvMesesTxt(ms){return ms.map(function(m){return MLAB[m]||m;}).join(', ');}
+function _rvDentro(v,de,ate){var d=rvDataISO(v&&v.data);return !!d&&d>=de&&d<=ate;}
+// COMISSAO em PDF = relatorio COMPLETO do periodo (todos os vendedores). Cada linha vai para o mes da data em que entrou.
+// Em cada mes, espelha so o trecho de datas do PDF (o que esta fora do periodo fica como estava).
 function rvImportarComissaoPdf(file,msg){
   msg.innerHTML=_rvAlerta('info','⏳ Lendo o PDF...');
   rvLerRelatorioPdf(file,function(r){
     if(r.tipo!=='comissao'){msg.innerHTML=_rvAlerta('err','❌ Este PDF é de <strong>Vendas Realizadas</strong>. Use o quadro "Importar Vendas Realizadas".');return;}
-    if(!r.erros.length&&MONTHS.indexOf(r.mes)<0)r.erros.push('o mês do PDF ('+r.periodo+') não existe no painel');
+    var fora=_rvForaDoMes(r);
+    if(!r.erros.length&&fora.length)r.erros.push('o PDF pega meses que o painel não tem: '+fora.join(', '));
     if(r.erros.length){msg.innerHTML=_rvListaErros('PDF recusado — nada foi gravado.',r.erros);return;}
     var mapa={},faltam=[];
     Object.keys(r.vendedoresPdf).forEach(function(n){var v=matchVendedor(n);if(v)mapa[n]=v;else faltam.push(n);});
     if(faltam.length){msg.innerHTML=_rvAlerta('err','❌ Vendedor não cadastrado: <strong>'+_vgEsc(faltam.join(', '))+'</strong>. Cadastre em Equipe (ou coloque esse nome em "nome nas vendas" do vendedor) e importe de novo. <strong>Nada foi gravado.</strong>');return;}
-    var cons={},ordem=[];
-    r.linhas.forEach(function(l){var k=String(l.os).toUpperCase();if(!cons[k]){cons[k]={data:l.data,os:k,cliente:l.cliente,valor:0,vendedor:mapa[l.vendedorPdf]};ordem.push(k);}cons[k].valor=Math.round((cons[k].valor+l.valor)*100)/100;});
-    rvIrParaMes(r.mes);
-    var porOS={},porBase={},usados={};
-    S.vendas.forEach(function(v){porOS[String(v.os).toUpperCase()]=v;var b=osBase(v.os);(porBase[b]=porBase[b]||[]).push(v);});
-    var nova=[],novas=0,alt=0,igu=0,devQ=0,devV=0;
-    ordem=ordem.filter(function(k){return cons[k].valor!==0;}); // R$ 0,00 = movimento interno, nao entra
-    ordem.forEach(function(k){
-      var c=cons[k],ex=porOS[k];
-      if(c.valor<0){devQ++;devV+=c.valor;}
-      if(ex){
-        usados[k]=true;
-        if(Math.abs(_vgNum(ex.valor)-c.valor)>0.009||ex.vendedor!==c.vendedor||String(ex.cliente)!==String(c.cliente)||ex.data!==c.data)alt++;else igu++;
-        nova.push(Object.assign({},ex,{data:c.data,cliente:c.cliente,valor:c.valor,vendedor:c.vendedor}));
-      }else{
-        var r0={id:novoIdNum(),data:c.data,os:k,cliente:c.cliente,valor:c.valor,vendedor:c.vendedor};
-        var irm=(porBase[osBase(k)]||[])[0];
-        if(irm){['entregar','endereco','parcelas'].forEach(function(f){if(irm[f]!==undefined&&irm[f]!==null&&irm[f]!=='')r0[f]=irm[f];});}
-        nova.push(r0);novas++;
-      }
+    // plano por mes (nada e gravado antes da confirmacao)
+    var planos=[],tot={novas:0,alt:0,igu:0,sai:0,devQ:0,devV:0,os:0};
+    r.meses.forEach(function(mes){
+      var cons={},ordem=[];
+      r.linhas.forEach(function(l){if(l.mes!==mes)return;var k=String(l.os).toUpperCase();if(!cons[k]){cons[k]={data:l.data,os:k,cliente:l.cliente,valor:0,vendedor:mapa[l.vendedorPdf]};ordem.push(k);}cons[k].valor=Math.round((cons[k].valor+l.valor)*100)/100;});
+      ordem=ordem.filter(function(k){return cons[k].valor!==0;}); // R$ 0,00 = movimento interno, nao entra
+      var atuais=(_vgDados(mes).vendas||[]),porOS={},porBase={},usados={};
+      atuais.forEach(function(v){porOS[String(v.os).toUpperCase()]=v;var b=osBase(v.os);(porBase[b]=porBase[b]||[]).push(v);});
+      var P={mes:mes,nova:[],novas:0,alt:0,igu:0,sai:0,devQ:0,devV:0,os:ordem.length};
+      ordem.forEach(function(k){
+        var c=cons[k],ex=porOS[k];
+        if(c.valor<0){P.devQ++;P.devV+=c.valor;}
+        if(ex){
+          usados[k]=true;
+          if(Math.abs(_vgNum(ex.valor)-c.valor)>0.009||ex.vendedor!==c.vendedor||String(ex.cliente)!==String(c.cliente)||rvDataISO(ex.data)!==c.data)P.alt++;else P.igu++;
+          P.nova.push(Object.assign({},ex,{data:c.data,cliente:c.cliente,valor:c.valor,vendedor:c.vendedor}));
+        }else{
+          var r0={id:novoIdNum(),data:c.data,os:k,cliente:c.cliente,valor:c.valor,vendedor:c.vendedor};
+          var irm=(porBase[osBase(k)]||[])[0];
+          if(irm){['entregar','endereco','parcelas'].forEach(function(f){if(irm[f]!==undefined&&irm[f]!==null&&irm[f]!=='')r0[f]=irm[f];});}
+          P.nova.push(r0);P.novas++;
+        }
+      });
+      // o que ja estava no mes: fica se estiver fora das datas do PDF; sai se estiver dentro e nao veio no PDF
+      atuais.forEach(function(v){var k=String(v.os).toUpperCase();if(usados[k])return;if(_rvDentro(v,r.de,r.ate))P.sai++;else P.nova.push(v);});
+      P.atuais=atuais.length;
+      ['novas','alt','igu','sai','devQ','devV','os'].forEach(function(f){tot[f]+=P[f];});
+      planos.push(P);
     });
-    var sai=S.vendas.filter(function(v){return !usados[String(v.os).toUpperCase()];});
-    var lab=MLAB[r.mes]||r.mes;
-    var txt='Comissão de '+lab+' — total '+fmt(r.totalPdf)+' confere com o PDF.\n\n'+r.linhas.length+' linhas → '+ordem.length+' O.S.\nNovas: '+novas+' · Atualizadas: '+alt+' · Iguais: '+igu+'\nSaem (não estão mais no relatório): '+sai.length+'\nDevoluções/estornos: '+devQ+(devQ?(' ('+fmt(devV)+')'):'')+'\n\nGravar?';
+    // trava: o relatorio de comissao tem que ser o COMPLETO (todos os vendedores). Se um mes perderia muita coisa, o PDF esta incompleto (ex.: filtrado por vendedor).
+    var suspeitos=planos.filter(function(P){return P.sai>Math.max(5,P.atuais*0.2);});
+    if(suspeitos.length){msg.innerHTML=_rvAlerta('err','❌ <strong>PDF recusado — nada foi gravado.</strong> Ele apagaria muitos recebimentos que já estão no painel ('+suspeitos.map(function(P){return (MLAB[P.mes]||P.mes)+': '+P.sai+' de '+P.atuais;}).join(' · ')+'). O relatório de Comissão precisa sair <strong>com todos os vendedores</strong> (sem filtro de vendedor) e pegar o período inteiro.');return;}
+    var txt='Comissão de '+r.periodo+' — total '+fmt(r.totalPdf)+' confere com o PDF.\n\n'+
+      (planos.length>1?planos.map(function(P){return (MLAB[P.mes]||P.mes)+': '+P.os+' O.S. · novas '+P.novas+' · atualizadas '+P.alt+' · saem '+P.sai;}).join('\n')+'\n\n':'')+
+      r.linhas.length+' linhas → '+tot.os+' O.S.\nNovas: '+tot.novas+' · Atualizadas: '+tot.alt+' · Iguais: '+tot.igu+'\nSaem (não estão mais no relatório): '+tot.sai+'\nDevoluções/estornos: '+tot.devQ+(tot.devQ?(' ('+fmt(tot.devV)+')'):'')+'\n\nGravar?';
     if(!confirm(txt)){msg.innerHTML=_rvAlerta('info','Cancelado. Nada foi gravado.');return;}
-    S.vendas=nova;
-    saveData();renderAll();
-    var porV={};nova.forEach(function(v){porV[v.vendedor]=(porV[v.vendedor]||0)+_vgNum(v.valor);});
-    msg.innerHTML=_rvAlerta('','✅ <strong>Recebido de '+_vgEsc(lab)+' gravado</strong> — '+fmt(r.totalPdf)+' (confere com o PDF). '+novas+' novas · '+alt+' atualizadas · '+igu+' iguais · '+sai.length+' saíram'+(devQ?(' · '+devQ+' devoluções descontadas ('+fmt(devV)+')'):'')+'.<br><span style="font-size:12px">'+Object.keys(porV).sort(function(a,b){return porV[b]-porV[a];}).map(function(n){return _vgEsc(n)+' '+fmt(porV[n]);}).join(' · ')+'</span>');
+    planos.forEach(function(P){_rvTrocaMes(P.mes);S.vendas=P.nova;saveData();});
+    rvIrParaMes(planos[planos.length-1].mes);renderAll();
+    var porV={};r.linhas.forEach(function(l){var n=mapa[l.vendedorPdf];porV[n]=Math.round(((porV[n]||0)+l.valor)*100)/100;});
+    msg.innerHTML=_rvAlerta('','✅ <strong>Recebido gravado ('+_vgEsc(r.periodo)+')</strong> — '+fmt(r.totalPdf)+' (confere com o PDF)'+(planos.length>1?(' em '+planos.length+' meses'):'')+'. '+tot.novas+' novas · '+tot.alt+' atualizadas · '+tot.igu+' iguais · '+tot.sai+' saíram'+(tot.devQ?(' · '+tot.devQ+' devoluções descontadas ('+fmt(tot.devV)+')'):'')+'.<br><span style="font-size:12px">'+Object.keys(porV).sort(function(a,b){return porV[b]-porV[a];}).map(function(n){return _vgEsc(n)+' '+fmt(porV[n]);}).join(' · ')+'</span>');
   },function(err){msg.innerHTML=_rvAlerta('err','❌ '+_vgEsc(err));});
 }
-// VENDAS REALIZADAS: um PDF por vendedor; varios de uma vez
+// VENDAS REALIZADAS: um PDF por vendedor (um mes ou varios); varios PDFs de uma vez
 var _rvVrPend=null;
 function rvImportarVendidoPdf(){
   var inp=document.getElementById('vrPdfFiles'),msg=document.getElementById('vrImportMsg');
@@ -5230,25 +5255,27 @@ function rvImportarVendidoPdf(){
   prox();
 }
 function rvMostrarVendido(res,msg){
-  var ok=[],ruins=[],meses={},vistos={};
+  var ok=[],ruins=[],vistos={};
   res.forEach(function(r){
     if(r.tipo==='comissao')r.erros=['este é o PDF de Comissão (recebido) — importe no quadro "Importar Recebido"'];
-    if(!r.erros.length&&MONTHS.indexOf(r.mes)<0)r.erros.push('o mês do PDF ('+r.periodo+') não existe no painel');
+    var fora=_rvForaDoMes(r);
+    if(!r.erros.length&&fora.length)r.erros.push('o PDF pega meses que o painel não tem: '+fora.join(', '));
     if(!r.erros.length){var v=matchVendedor(r.vendedorPdf);if(!v)r.erros.push('vendedor "'+r.vendedorPdf+'" não cadastrado — cadastre em Equipe (ou em "nome nas vendas") e leia de novo');else r.vendedor=v;}
-    if(!r.erros.length&&vistos[normStr(r.vendedor)])r.erros.push('mais de um PDF do mesmo vendedor ('+r.vendedor+')');
-    if(r.erros.length)ruins.push(r);else{ok.push(r);meses[r.mes]=1;vistos[normStr(r.vendedor)]=1;}
+    if(!r.erros.length&&vistos[normStr(r.vendedor)])r.erros.push('mais de um PDF do mesmo vendedor ('+r.vendedor+') — leia um de cada vez');
+    if(r.erros.length)ruins.push(r);else{ok.push(r);vistos[normStr(r.vendedor)]=1;}
   });
-  if(Object.keys(meses).length>1){ok.forEach(function(r){r.erros=['PDFs de meses diferentes juntos — leia um mês por vez'];ruins.push(r);});ok=[];}
   var h='';
   if(ok.length){
-    var mes=ok[0].mes,tot=0,n=0;
-    h+='<div class="alert">📄 <strong>'+_vgEsc(MLAB[mes]||mes)+'</strong> — '+ok.length+' PDF'+(ok.length===1?'':'s')+' conferido'+(ok.length===1?'':'s')+' (a soma de cada um bate com o TOTAL impresso nele).</div>';
-    h+='<div class="tbl-wrap"><table><thead><tr><th>Vendedor</th><th>Vendas</th><th>Total</th><th>Arquivo</th></tr></thead><tbody>'+
-      ok.map(function(r){var q=r.linhas.filter(function(l){return l.valor!==0;}).length;tot+=Math.round(r.somaLida*100);n+=q;return '<tr><td><strong>'+_vgEsc(r.vendedor)+'</strong>'+(rvEhSocio(r.vendedor)?' <span class="badge b-orange" style="font-size:10px">sócio</span>':'')+'</td><td>'+q+'</td><td>'+fmt(r.somaLida)+'</td><td style="font-size:11px;color:var(--muted)">'+_vgEsc(r.arquivo)+'</td></tr>';}).join('')+
-      '<tr style="font-weight:700;background:var(--bg)"><td>Total</td><td>'+n+'</td><td>'+fmt(tot/100)+'</td><td></td></tr></tbody></table></div>';
-    _rvVrPend={mes:mes,arquivos:ok};
+    var tot=0,n=0,meses={};
+    ok.forEach(function(r){r.meses.forEach(function(m){meses[m]=1;});});
+    var lm=MONTHS.filter(function(m){return meses[m];});
+    h+='<div class="alert">📄 '+ok.length+' PDF'+(ok.length===1?'':'s')+' conferido'+(ok.length===1?'':'s')+' (a soma de cada um bate com o TOTAL impresso nele) — '+(lm.length===1?_vgEsc(MLAB[lm[0]]||lm[0]):(lm.length+' meses: '+_vgEsc(_rvMesesTxt(lm))))+'.</div>';
+    h+='<div class="tbl-wrap"><table><thead><tr><th>Vendedor</th><th>Período</th><th>Vendas</th><th>Total</th><th>Arquivo</th></tr></thead><tbody>'+
+      ok.map(function(r){var q=r.linhas.filter(function(l){return l.valor!==0;}).length;tot+=Math.round(r.somaLida*100);n+=q;return '<tr><td><strong>'+_vgEsc(r.vendedor)+'</strong>'+(rvEhSocio(r.vendedor)?' <span class="badge b-orange" style="font-size:10px">sócio</span>':'')+'</td><td style="font-size:12px">'+_vgEsc(r.periodo)+'</td><td>'+q+'</td><td>'+fmt(r.somaLida)+'</td><td style="font-size:11px;color:var(--muted)">'+_vgEsc(r.arquivo)+'</td></tr>';}).join('')+
+      '<tr style="font-weight:700;background:var(--bg)"><td>Total</td><td></td><td>'+n+'</td><td>'+fmt(tot/100)+'</td><td></td></tr></tbody></table></div>';
+    _rvVrPend={arquivos:ok};
     h+='<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-teal" id="vrConfirmarBtn" onclick="rvConfirmarVendido()">✅ Confirmar e gravar</button><button class="btn btn-ghost" onclick="_rvVrPend=null;document.getElementById(\'vrImportMsg\').innerHTML=\'\'">Cancelar</button></div>';
-    h+='<div style="font-size:12px;color:var(--muted);margin-top:6px">Para cada vendedor lido, o mês fica igual ao PDF: entra o que é novo, atualiza o que mudou e sai a O.S. que não está mais no relatório dele. Venda de R$ 0,00 (movimento interno) não entra.</div>';
+    h+='<div style="font-size:12px;color:var(--muted);margin-top:6px">Cada venda vai para o mês da própria data. Para cada vendedor lido, o período do PDF fica igual ao PDF: entra o que é novo, atualiza o que mudou e sai a O.S. que não está mais no relatório dele. Venda de R$ 0,00 (movimento interno) não entra.</div>';
   }
   if(ruins.length)h+=_rvListaErros(ruins.length+' PDF'+(ruins.length===1?'':'s')+' recusado'+(ruins.length===1?'':'s')+' (não entram):',ruins.map(function(r){return r.arquivo+': '+r.erros.join('; ');}));
   msg.innerHTML=h;
@@ -5256,31 +5283,37 @@ function rvMostrarVendido(res,msg){
 function rvConfirmarVendido(){
   var p=_rvVrPend,msg=document.getElementById('vrImportMsg');if(!p)return;_rvVrPend=null;
   var b=document.getElementById('vrConfirmarBtn');if(b)b.disabled=true;
-  rvIrParaMes(p.mes);
-  if(!S.vendido)S.vendido=[];
+  var porMes={};
+  p.arquivos.forEach(function(r){r.meses.forEach(function(m){(porMes[m]=porMes[m]||[]).push(r);});});
+  var lm=MONTHS.filter(function(m){return porMes[m];});
   var nov=0,alt=0,igu=0,rem=0;
-  p.arquivos.forEach(function(r){
-    var nome=r.vendedor,n=normStr(nome),vistos={};
-    r.linhas.forEach(function(l){
-      if(!l.valor)return; // R$ 0,00 = movimento interno, nao e venda
-      var k=String(l.os).toUpperCase();vistos[k]=1;
-      var row={data:l.data,os:k,forma:l.forma,codCliente:l.codCliente,cliente:l.cliente,valor:l.valor,vendedor:nome};
-      // a O.S. so pode ter um dono: se estava com outro vendedor, passa para este
-      S.vendido=S.vendido.filter(function(v){return !(String(v.os).toUpperCase()===k&&normStr(v.vendedor)!==n);});
-      var ex=S.vendido.find(function(v){return String(v.os).toUpperCase()===k;});
-      if(ex){
-        var mud=Math.abs(_vgNum(ex.valor)-row.valor)>0.009||ex.data!==row.data||String(ex.cliente)!==row.cliente||String(ex.forma)!==row.forma;
-        if(mud){Object.assign(ex,row);alt++;}else igu++;
-      }else{row.id=novoIdNum();S.vendido.push(row);nov++;}
+  lm.forEach(function(mes){
+    _rvTrocaMes(mes);
+    if(!S.vendido)S.vendido=[];
+    porMes[mes].forEach(function(r){
+      var nome=r.vendedor,n=normStr(nome),vistos={};
+      r.linhas.forEach(function(l){
+        if(l.mes!==mes||!l.valor)return; // outro mes, ou R$ 0,00 (movimento interno)
+        var k=String(l.os).toUpperCase();vistos[k]=1;
+        var row={data:l.data,os:k,forma:l.forma,codCliente:l.codCliente,cliente:l.cliente,valor:l.valor,vendedor:nome};
+        // a O.S. so pode ter um dono: se estava com outro vendedor, passa para este
+        S.vendido=S.vendido.filter(function(v){return !(String(v.os).toUpperCase()===k&&normStr(v.vendedor)!==n);});
+        var ex=S.vendido.find(function(v){return String(v.os).toUpperCase()===k;});
+        if(ex){
+          var mud=Math.abs(_vgNum(ex.valor)-row.valor)>0.009||rvDataISO(ex.data)!==row.data||String(ex.cliente)!==row.cliente||String(ex.forma)!==row.forma;
+          if(mud){Object.assign(ex,row);alt++;}else igu++;
+        }else{row.id=novoIdNum();S.vendido.push(row);nov++;}
+      });
+      // sai so o que e deste vendedor, dentro das datas do PDF, e nao veio no PDF
+      var antes=S.vendido.length;
+      S.vendido=S.vendido.filter(function(v){return normStr(v.vendedor)!==n||vistos[String(v.os).toUpperCase()]||!_rvDentro(v,r.de,r.ate);});
+      rem+=antes-S.vendido.length;
     });
-    var antes=S.vendido.length;
-    S.vendido=S.vendido.filter(function(v){return normStr(v.vendedor)!==n||vistos[String(v.os).toUpperCase()];});
-    rem+=antes-S.vendido.length;
+    S._temVendido=true;
+    saveData();
   });
-  S._temVendido=true;
-  saveData();renderAll();
-  var lab=MLAB[p.mes]||p.mes;
-  msg.innerHTML=_rvAlerta('','✅ <strong>Vendido de '+_vgEsc(lab)+' gravado</strong> — '+nov+' novas · '+alt+' atualizadas · '+igu+' iguais · '+rem+' saíram. Total vendido do mês: <strong>'+fmt(rvVendidoMes(p.mes))+'</strong>.');
+  rvIrParaMes(lm[lm.length-1]);renderAll();
+  msg.innerHTML=_rvAlerta('','✅ <strong>Vendido gravado</strong> — '+(lm.length===1?_vgEsc(MLAB[lm[0]]||lm[0]):(lm.length+' meses ('+_vgEsc(_rvMesesTxt(lm))+')'))+': '+nov+' novas · '+alt+' atualizadas · '+igu+' iguais · '+rem+' saíram.'+(lm.length===1?(' Total vendido do mês: <strong>'+fmt(rvVendidoMes(lm[0]))+'</strong>.'):''));
 }
 
 function renderVisao(){
