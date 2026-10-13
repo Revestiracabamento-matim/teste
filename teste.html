@@ -955,8 +955,8 @@ body.rv-lateral #rvSub{display:flex}
     </div>
     <div class="card">
       <div class="card-hd"><h3 class="card-title">Importar Recebido — Comissão (PDF do sistema ou CSV)</h3></div>
-      <div class="alert alert-info">📄 No sistema: relatório <strong>Comissão do Período</strong> do mês, com todos os vendedores, baixado em PDF. É o <strong>recebido</strong>: o que entrou no caixa e a base do pagamento da premiação. O PDF substitui o mês inteiro (é o relatório completo) e só é aceito se a soma bater com o TOTAL GERAL. Devoluções e estornos (valores negativos) são descontados. Ainda aceita o CSV antigo.</div>
-      <div class="field"><label>Arquivo PDF ou CSV</label><input type="file" id="csvFile" accept=".pdf,application/pdf,.csv" style="padding:8px"></div>
+      <div class="alert alert-info">📄 No sistema: relatório <strong>Comissão do Período</strong> do mês, com todos os vendedores, baixado em PDF. É o <strong>recebido</strong>: o que entrou no caixa e a base do pagamento da premiação. Pode ser um PDF com todos os vendedores ou um PDF por vendedor (selecione todos de uma vez). Só é aceito se a soma bater com o TOTAL de cada PDF. Devoluções e estornos (valores negativos) são descontados. Ainda aceita o CSV antigo.</div>
+      <div class="field"><label>Arquivo PDF ou CSV</label><input type="file" id="csvFile" accept=".pdf,application/pdf,.csv" multiple style="padding:8px"></div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer"><input type="checkbox" id="modoEspelhar" style="width:auto"> <span>🔄 <strong>Modo espelhar ERP</strong> — substitui TODAS as vendas do mês pelo conteúdo do arquivo (remove as que foram excluídas no ERP). Sem isso, só adiciona as novas.</span></label>
       <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
         <button class="btn btn-teal" onclick="importCSV()">📊 Importar</button>
@@ -3625,7 +3625,7 @@ function importCSV(){
   const file=document.getElementById('csvFile').files[0];
   const msg=document.getElementById('importMsg');
   if(!file){msg.innerHTML='<div class="alert alert-err">❌ Selecione arquivo</div>';return;}
-  if(/\.pdf$/i.test(file.name)){rvImportarComissaoPdf(file,msg);return;} // v46: PDF do sistema, sem conversor
+  if(/\.pdf$/i.test(file.name)){rvImportarComissaoPdfs(Array.prototype.slice.call(document.getElementById('csvFile').files),msg);return;} // v46/v47: PDF(s) do sistema, sem conversor
   const espelhar=document.getElementById('modoEspelhar')?.checked;
   if(espelhar){if(!confirm('🔄 MODO ESPELHAR ERP ativado.\n\nIsso vai APAGAR todas as vendas atuais do mês '+currentMonth.replace('_',' ')+' e substituir pelo conteúdo do arquivo.\n\nVendas excluídas no ERP serão removidas aqui também. Confirma?'))return;S.vendas=[];}
   const reader=new FileReader();
@@ -5007,6 +5007,8 @@ function rvLerVendasRealizadas(linhas){
     if((m=l.match(/VENDAS REALIZADAS DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){if(!r.periodo)_rvAplicaPeriodo(r,rvMesDoPeriodo(m[1],m[2]));return;}
     if((m=l.match(/^VENDEDOR: ?(.+?) - (\d+)$/))){r.vendedorPdf=m[1].trim();r.codVendedor=m[2];vendedores[m[1].trim()]=1;return;}
     if((m=l.match(/NUMERO DE O\.S\.: ?(\d+) .*TOTAL: ?(-?[\d.]*\d,\d{2})/))){r.qtdPdf=Number(m[1]);r.totalPdf=rvNumPdf(m[2]);return;}
+    if((m=l.match(/NUMERO DE O\.S\.: ?(\d+) .*VALOR DAS VENDAS/))){r.qtdPdf=Number(m[1]);return;}
+    if((m=l.match(/^TOTAL DO DIA\.*: ?(-?[\d.]*\d,\d{2})/))){r.totalPdf=rvNumPdf(m[1]);return;} // v47: total ja descontando as devolucoes
     if((m=l.match(reLin))){
       r.linhas.push({data:_rvIsoBR(m[1]),os:m[2],forma:m[3],codCliente:m[4]||'',cliente:(m[5]||'').trim(),valor:rvNumPdf(m[6])});
       return;
@@ -5027,25 +5029,37 @@ function rvLerVendasRealizadas(linhas){
 }
 // ---- COMISSAO DO PERIODO (recebido; um PDF com todos os vendedores; um mes ou varios) ----
 function rvLerComissao(linhas){
-  var r={tipo:'comissao',linhas:[],mes:'',meses:[],de:'',ate:'',periodo:'',totalPdf:null,erros:[],somaSecoes:0,vendedoresPdf:{}};
-  var vend='',forma='',somaSecoes=0;
-  var reLin=/^(\d{2}\/\d{2}\/\d{4}) ([A-Z]{1,4}\d+(?:\/\d+)?)(?: (.*?))? (-?[\d.]*\d,\d{2})$/;
+  var r={tipo:'comissao',linhas:[],mes:'',meses:[],de:'',ate:'',periodo:'',totalPdf:null,erros:[],avisos:[],somaSecoes:0,vendedoresPdf:{}};
+  var vend='',forma='',somaSecoes=0,secao=[];
+  var reLin=/^(\d{2}\/\d{2}\/\d{4}) ([A-Z]{1,4}\d+(?:\/\d+)?)(?: (.*?))? (-?[\d.]*\d,\d{2}|\*+,\*+)$/;
   linhas.forEach(function(l){
     var m;
     if((m=l.match(/COMISSAO DO PERIODO DE (\d{2}\/\d{2}\/\d{4}) A (\d{2}\/\d{2}\/\d{4})/))){if(!r.periodo)_rvAplicaPeriodo(r,rvMesDoPeriodo(m[1],m[2]));return;}
     if((m=l.match(/^VENDEDOR\.*: ?(.+?) - (\d+)$/))){vend=m[1].trim();r.vendedoresPdf[vend]=1;return;}
     if((m=l.match(/^FORMA PAGAMENTO: ?(.+)$/))){forma=m[1].trim();return;}
     if((m=l.match(/TOTAL GERAL\.*: ?(-?[\d.]*\d,\d{2})/))){r.totalPdf=rvNumPdf(m[1]);return;}
-    if((m=l.match(/^TOTAL VENDEDOR\.*: ?(-?[\d.]*\d,\d{2})$/))){somaSecoes+=rvCent(rvNumPdf(m[1]));return;}
+    if((m=l.match(/^TOTAL VENDEDOR\.*: ?(-?[\d.]*\d,\d{2})$/))){
+      var tv=rvCent(rvNumPdf(m[1]));somaSecoes+=tv;
+      // v47: o sistema imprime ******,** quando o valor nao cabe na coluna. Com UM so desses na secao, o valor sai exato do TOTAL VENDEDOR.
+      var sem=secao.filter(function(x){return x.valor===null;});
+      if(sem.length===1){var outros=secao.reduce(function(a,x){return a+(x.valor===null?0:rvCent(x.valor));},0);sem[0].valor=(tv-outros)/100;sem[0].deduzido=true;r.avisos.push('O.S. '+sem[0].os+' ('+sem[0].cliente+', '+sem[0].data.split('-').reverse().join('/')+') veio como ******,** no PDF; o valor ('+sem[0].valor.toFixed(2).replace('.',',')+') foi calculado pelo TOTAL do vendedor.');}
+      else if(sem.length>1)r.erros.push('mais de um valor ilegível (******,**) no mesmo vendedor — não dá para calcular');
+      secao=[];return;
+    }
     if((m=l.match(reLin))){
       if(!vend){r.erros.push('linha sem vendedor: '+l);return;}
-      r.linhas.push({data:_rvIsoBR(m[1]),os:m[2],cliente:(m[3]||'').trim(),valor:rvNumPdf(m[4]),vendedorPdf:vend,forma:forma});
+      var v=/\*/.test(m[4])?null:rvNumPdf(m[4]);
+      // v47: devolucao (O.S. "DV...") vem impressa positiva e o sistema DESCONTA no total
+      if(v!==null&&/^DV/.test(m[2]))v=-Math.abs(v);
+      var x={data:_rvIsoBR(m[1]),os:m[2],cliente:(m[3]||'').trim(),valor:v,vendedorPdf:vend,forma:forma};
+      r.linhas.push(x);secao.push(x);
       return;
     }
     if(/^\d{2}\/\d{2}\/\d{4} /.test(l)&&!/REVESTIR/.test(l))r.erros.push('linha não entendida: '+l);
   });
+  if(r.linhas.some(function(x){return x.valor===null;}))r.erros.push('valor ilegível (******,**) que não deu para calcular');
   _rvConfereDatas(r);
-  var soma=r.linhas.reduce(function(a,x){return a+rvCent(x.valor);},0);
+  var soma=r.linhas.reduce(function(a,x){return a+rvCent(x.valor||0);},0);
   r.somaLida=soma/100;r.somaSecoes=somaSecoes/100;
   if(!r.periodo&&!r.erros.length)r.erros.push('não achei o período (COMISSAO DO PERIODO DE ... A ...)');
   if(r.totalPdf===null)r.erros.push('não achei o TOTAL GERAL no fim do PDF — o arquivo pode estar incompleto');
@@ -5185,17 +5199,45 @@ function _rvTrocaMes(m){if(currentMonth!==m){currentMonth=m;var sel=document.get
 function _rvForaDoMes(r){return (r.meses||[]).filter(function(m){return MONTHS.indexOf(m)<0;});}
 function _rvMesesTxt(ms){return ms.map(function(m){return MLAB[m]||m;}).join(', ');}
 function _rvDentro(v,de,ate){var d=rvDataISO(v&&v.data);return !!d&&d>=de&&d<=ate;}
-// COMISSAO em PDF = relatorio COMPLETO do periodo (todos os vendedores). Cada linha vai para o mes da data em que entrou.
-// Em cada mes, espelha so o trecho de datas do PDF (o que esta fora do periodo fica como estava).
-function rvImportarComissaoPdf(file,msg){
-  msg.innerHTML=_rvAlerta('info','⏳ Lendo o PDF...');
-  rvLerRelatorioPdf(file,function(r){
-    if(r.tipo!=='comissao'){msg.innerHTML=_rvAlerta('err','❌ Este PDF é de <strong>Vendas Realizadas</strong>. Use o quadro "Importar Vendas Realizadas".');return;}
+// COMISSAO em PDF: um PDF com todos os vendedores, OU um PDF por vendedor (pode selecionar varios de uma vez).
+// Cada linha vai para o mes da data em que entrou. Em cada mes, so mexe nos vendedores que vieram nos PDFs e so dentro das datas do PDF.
+function rvImportarComissaoPdf(file,msg){rvImportarComissaoPdfs([file],msg);}
+function rvImportarComissaoPdfs(files,msg){
+  msg.innerHTML=_rvAlerta('info','⏳ Lendo '+files.length+' PDF'+(files.length===1?'':'s')+'...');
+  var lidos=[],i=0;
+  function prox(){
+    if(i>=files.length){_rvJuntarComissao(lidos,msg);return;}
+    var f=files[i++];
+    rvLerRelatorioPdf(f,function(r){r.arquivo=f.name;lidos.push(r);prox();},function(e){lidos.push({arquivo:f.name,tipo:'?',erros:[e],linhas:[],avisos:[]});prox();});
+  }
+  prox();
+}
+function _rvJuntarComissao(lidos,msg){
+  var erros=[];
+  lidos.forEach(function(r){
+    if(r.tipo==='vendido')r.erros=['é PDF de Vendas Realizadas — use o quadro "Importar Vendas Realizadas"'];
+    r.erros.forEach(function(e){erros.push((lidos.length>1?r.arquivo+': ':'')+e);});
+  });
+  var vistos={};
+  lidos.forEach(function(r){Object.keys(r.vendedoresPdf||{}).forEach(function(v){if(vistos[v])erros.push('o vendedor '+v+' aparece em mais de um PDF');vistos[v]=1;});});
+  if(erros.length){msg.innerHTML=_rvListaErros('PDF recusado — nada foi gravado.',erros);return;}
+  // junta tudo num relatorio so
+  var R={linhas:[],vendedoresPdf:{},avisos:[],totalPdf:0,de:'',ate:''};
+  lidos.forEach(function(r){
+    R.linhas=R.linhas.concat(r.linhas);R.avisos=R.avisos.concat(r.avisos||[]);R.totalPdf=Math.round((R.totalPdf+r.totalPdf)*100)/100;
+    Object.keys(r.vendedoresPdf).forEach(function(v){R.vendedoresPdf[v]=1;});
+    if(!R.de||r.de<R.de)R.de=r.de; if(!R.ate||r.ate>R.ate)R.ate=r.ate;
+  });
+  var p=rvMesDoPeriodo(R.de.split('-').reverse().join('/'),R.ate.split('-').reverse().join('/'));
+  R.meses=p.meses;R.periodo=p.periodo;R.erros=[];
+  rvAplicarComissao(R,msg);
+}
+function rvAplicarComissao(r,msg){
+  (function(){
     var fora=_rvForaDoMes(r);
-    if(!r.erros.length&&fora.length)r.erros.push('o PDF pega meses que o painel não tem: '+fora.join(', '));
-    if(r.erros.length){msg.innerHTML=_rvListaErros('PDF recusado — nada foi gravado.',r.erros);return;}
-    var mapa={},faltam=[];
-    Object.keys(r.vendedoresPdf).forEach(function(n){var v=matchVendedor(n);if(v)mapa[n]=v;else faltam.push(n);});
+    if(fora.length){msg.innerHTML=_rvListaErros('PDF recusado — nada foi gravado.',['o PDF pega meses que o painel não tem: '+fora.join(', ')]);return;}
+    var mapa={},faltam=[],donos={};
+    Object.keys(r.vendedoresPdf).forEach(function(n){var v=matchVendedor(n);if(v){mapa[n]=v;donos[normStr(v)]=1;}else faltam.push(n);});
     if(faltam.length){msg.innerHTML=_rvAlerta('err','❌ Vendedor não cadastrado: <strong>'+_vgEsc(faltam.join(', '))+'</strong>. Cadastre em Equipe (ou coloque esse nome em "nome nas vendas" do vendedor) e importe de novo. <strong>Nada foi gravado.</strong>');return;}
     // plano por mes (nada e gravado antes da confirmacao)
     var planos=[],tot={novas:0,alt:0,igu:0,sai:0,devQ:0,devV:0,os:0};
@@ -5221,7 +5263,7 @@ function rvImportarComissaoPdf(file,msg){
         }
       });
       // o que ja estava no mes: fica se estiver fora das datas do PDF; sai se estiver dentro e nao veio no PDF
-      atuais.forEach(function(v){var k=String(v.os).toUpperCase();if(usados[k])return;if(_rvDentro(v,r.de,r.ate))P.sai++;else P.nova.push(v);});
+      atuais.forEach(function(v){var k=String(v.os).toUpperCase();if(usados[k])return;if(_rvDentro(v,r.de,r.ate)&&donos[normStr(v.vendedor)])P.sai++;else P.nova.push(v);});
       P.atuais=atuais.length;
       ['novas','alt','igu','sai','devQ','devV','os'].forEach(function(f){tot[f]+=P[f];});
       planos.push(P);
@@ -5229,15 +5271,15 @@ function rvImportarComissaoPdf(file,msg){
     // trava: o relatorio de comissao tem que ser o COMPLETO (todos os vendedores). Se um mes perderia muita coisa, o PDF esta incompleto (ex.: filtrado por vendedor).
     var suspeitos=planos.filter(function(P){return P.sai>Math.max(5,P.atuais*0.2);});
     if(suspeitos.length){msg.innerHTML=_rvAlerta('err','❌ <strong>PDF recusado — nada foi gravado.</strong> Ele apagaria muitos recebimentos que já estão no painel ('+suspeitos.map(function(P){return (MLAB[P.mes]||P.mes)+': '+P.sai+' de '+P.atuais;}).join(' · ')+'). O relatório de Comissão precisa sair <strong>com todos os vendedores</strong> (sem filtro de vendedor) e pegar o período inteiro.');return;}
-    var txt='Comissão de '+r.periodo+' — total '+fmt(r.totalPdf)+' confere com o PDF.\n\n'+
+    var txt='Comissão de '+r.periodo+' — total '+fmt(r.totalPdf)+' confere com o PDF.\n'+Object.keys(r.vendedoresPdf).length+' vendedor(es).\n\n'+(r.avisos.length?('Atenção: '+r.avisos.join(' ')+'\n\n'):'')+
       (planos.length>1?planos.map(function(P){return (MLAB[P.mes]||P.mes)+': '+P.os+' O.S. · novas '+P.novas+' · atualizadas '+P.alt+' · saem '+P.sai;}).join('\n')+'\n\n':'')+
       r.linhas.length+' linhas → '+tot.os+' O.S.\nNovas: '+tot.novas+' · Atualizadas: '+tot.alt+' · Iguais: '+tot.igu+'\nSaem (não estão mais no relatório): '+tot.sai+'\nDevoluções/estornos: '+tot.devQ+(tot.devQ?(' ('+fmt(tot.devV)+')'):'')+'\n\nGravar?';
     if(!confirm(txt)){msg.innerHTML=_rvAlerta('info','Cancelado. Nada foi gravado.');return;}
     planos.forEach(function(P){_rvTrocaMes(P.mes);S.vendas=P.nova;saveData();});
     rvIrParaMes(planos[planos.length-1].mes);renderAll();
     var porV={};r.linhas.forEach(function(l){var n=mapa[l.vendedorPdf];porV[n]=Math.round(((porV[n]||0)+l.valor)*100)/100;});
-    msg.innerHTML=_rvAlerta('','✅ <strong>Recebido gravado ('+_vgEsc(r.periodo)+')</strong> — '+fmt(r.totalPdf)+' (confere com o PDF)'+(planos.length>1?(' em '+planos.length+' meses'):'')+'. '+tot.novas+' novas · '+tot.alt+' atualizadas · '+tot.igu+' iguais · '+tot.sai+' saíram'+(tot.devQ?(' · '+tot.devQ+' devoluções descontadas ('+fmt(tot.devV)+')'):'')+'.<br><span style="font-size:12px">'+Object.keys(porV).sort(function(a,b){return porV[b]-porV[a];}).map(function(n){return _vgEsc(n)+' '+fmt(porV[n]);}).join(' · ')+'</span>');
-  },function(err){msg.innerHTML=_rvAlerta('err','❌ '+_vgEsc(err));});
+    msg.innerHTML=_rvAlerta('','✅ <strong>Recebido gravado ('+_vgEsc(r.periodo)+')</strong> — '+fmt(r.totalPdf)+' (confere com o PDF)'+(planos.length>1?(' em '+planos.length+' meses'):'')+'. '+tot.novas+' novas · '+tot.alt+' atualizadas · '+tot.igu+' iguais · '+tot.sai+' saíram'+(tot.devQ?(' · '+tot.devQ+' devoluções descontadas ('+fmt(tot.devV)+')'):'')+'.<br><span style="font-size:12px">'+Object.keys(porV).sort(function(a,b){return porV[b]-porV[a];}).map(function(n){return _vgEsc(n)+' '+fmt(porV[n]);}).join(' · ')+'</span>'+(r.avisos.length?('<br><span style="font-size:12px;color:#A04F00">⚠️ '+r.avisos.map(_vgEsc).join(' ')+'</span>'):''));
+  })();
 }
 // VENDAS REALIZADAS: um PDF por vendedor (um mes ou varios); varios PDFs de uma vez
 var _rvVrPend=null;
