@@ -173,6 +173,18 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
 .vg-mes-bar.futuro{background:var(--vg-teal-lt)}
 .vg-mes-lbls{display:flex;gap:10px;padding:8px 4px 0}
 .vg-mes-lbl{flex:1 1 0;text-align:center;font-size:11px;color:var(--vg-sec)}
+.vg-vr{display:flex;align-items:flex-end;gap:10px;height:170px;border-bottom:1px solid var(--vg-linha);padding:0 4px}
+.vg-vr-col{flex:1 1 0;display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%}
+.vg-vr-bar{width:14px;border-radius:4px 4px 0 0;min-height:2px;display:block}
+.vg-vr-v{background:#0E9488}
+.vg-vr-r{background:#A04F00}
+.vg-vr-topo{display:flex;justify-content:space-between;font-size:11px;color:var(--vg-sec);padding:0 4px 2px}
+.vg-vr-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 14px}
+.vg-vr-n{background:var(--vg-fundo);border-radius:10px;padding:12px}
+.vg-vr-n b{display:block;font-size:22px;font-weight:700;margin:2px 0}
+.vg-vr-leg{display:flex;gap:16px;font-size:12px;color:var(--vg-sec);margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.vg-vr-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+@media (max-width:620px){.vg-vr-nums{grid-template-columns:minmax(0,1fr)}.vg-vr-bar{width:9px}}
 .vg-vazio{color:var(--vg-sec);font-size:13px;padding:10px 0}
 @media (max-width:900px){
   .vg-cols{grid-template-columns:minmax(0,1fr)}
@@ -494,6 +506,16 @@ body.rv-lateral #rvSub{display:flex}
       <span class="vg-pill" id="vgPill">—</span>
     </div>
 
+    <div class="vg-card" id="vgVrCard" style="display:none;margin-bottom:18px">
+      <h3 class="vg-card-tit">Vendido x Recebido</h3>
+      <div class="vg-sub" id="vgVrSub">—</div>
+      <div class="vg-vr-nums" id="vgVrNums"></div>
+      <div class="vg-vr-leg" id="vgVrLeg"></div>
+      <div class="vg-vr-topo" id="vgVrTopo"></div>
+      <div class="vg-vr" id="vgVrBars"></div>
+      <div class="vg-mes-lbls" id="vgVrLbls"></div>
+      <div id="vgVrTab"></div>
+    </div>
     <div class="vg-cols">
       <div class="vg-card" id="vgMesCard" style="display:none">
         <h3 class="vg-card-tit">Faturamento mês a mês</h3>
@@ -5358,6 +5380,53 @@ function rvConfirmarVendido(){
   msg.innerHTML=_rvAlerta('','✅ <strong>Vendido gravado</strong> — '+(lm.length===1?_vgEsc(MLAB[lm[0]]||lm[0]):(lm.length+' meses ('+_vgEsc(_rvMesesTxt(lm))+')'))+': '+nov+' novas · '+alt+' atualizadas · '+igu+' iguais · '+rem+' saíram.'+(lm.length===1?(' Total vendido do mês: <strong>'+fmt(rvVendidoMes(lm[0]))+'</strong>.'):''));
 }
 
+// v49: comparativo VENDIDO x RECEBIDO — numeros, grafico de barras lado a lado e tabela de apoio.
+// Serve o mes escolhido e o periodo. Duas series = legenda sempre + valores na tabela (identidade nunca so pela cor).
+function _rvAReceberMeses(ms){
+  var set={};(ms||[]).forEach(function(m){set[m]=1;});
+  var r=rvAReceber(null),lista=r.lista.filter(function(x){return set[x.mes];});
+  return {lista:lista,total:Math.round(lista.reduce(function(a,x){return a+x.falta;},0)*100)/100,temFat:r.temFat};
+}
+function rvRenderVr(meses,periodo){
+  var card=document.getElementById('vgVrCard');if(!card)return;
+  if(!MONTHS.some(rvTemVendido)){card.style.display='none';return;}
+  card.style.display='';
+  // grafico: no periodo, os meses do periodo; no mes, o ano ate o mes escolhido (ate 12 colunas)
+  var g;
+  if(periodo){g=meses.filter(rvTemVendido);}
+  else{var i=MONTHS.indexOf(currentMonth);g=MONTHS.filter(function(m,j){return j<=i&&rvTemVendido(m);});if(g.length>12)g=g.slice(g.length-12);}
+  if(!g.length)g=meses.slice();
+  var ve=0,re=0;meses.forEach(function(m){ve+=rvVendidoMes(m);re+=rvRecebidoMes(m);});
+  ve=Math.round(ve*100)/100;re=Math.round(re*100)/100;
+  var ar=_rvAReceberMeses(meses),dif=Math.round((re-ve)*100)/100,pc=ve?Math.round(re/ve*100):0;
+  document.getElementById('vgVrSub').textContent=periodo
+    ?('Vendido é o pedido fechado; recebido é o dinheiro que entrou no caixa. '+meses.length+' meses.')
+    :('Vendido é o pedido fechado no mês; recebido é o dinheiro que entrou no caixa no mês.');
+  var cxNum=function(rot,val,sub,cor){return '<div class="vg-vr-n"><span style="font-size:12px;color:var(--vg-sec)">'+rot+'</span><b style="color:'+cor+'">'+fmtShort(val)+'</b><span style="font-size:11px;color:var(--vg-sec)">'+sub+'</span></div>';};
+  document.getElementById('vgVrNums').innerHTML=
+    cxNum('Vendido',ve,(periodo?'no período':'no mês'),'#0E9488')+
+    cxNum('Entrou no caixa',re,pc+'% do que foi vendido','#A04F00')+
+    cxNum('Falta entrar',ar.total,ar.lista.length?(ar.lista.length+' venda'+(ar.lista.length===1?'':'s')+' a receber'):'tudo já entrou','#5C5A55');
+  document.getElementById('vgVrLeg').innerHTML=
+    '<span><i style="background:#0E9488"></i>Vendido</span><span><i style="background:#A04F00"></i>Entrou no caixa</span>'+
+    '<span style="color:'+(dif<0?'#B4271F':'#17795E')+'">'+(dif<0?'Entrou '+fmtShort(-dif)+' a menos do que foi vendido':'Entrou '+fmtShort(dif)+' a mais (parcelas de vendas antigas)')+'</span>';
+  var topo=1;g.forEach(function(m){topo=Math.max(topo,rvVendidoMes(m),rvRecebidoMes(m));});
+  document.getElementById('vgVrBars').innerHTML=g.map(function(m){
+    var a=rvVendidoMes(m),b=rvRecebidoMes(m),lab=MLAB[m]||m;
+    return '<div class="vg-vr-col"'+(m===currentMonth&&!periodo?' style="background:var(--vg-linha2);border-radius:6px"':'')+'>'+
+      '<span class="vg-vr-bar vg-vr-v" style="height:'+Math.max(1,Math.round(a/topo*100))+'%" title="'+_vgEsc(lab)+' — vendido '+fmt(a)+'"></span>'+
+      '<span class="vg-vr-bar vg-vr-r" style="height:'+Math.max(1,Math.round(b/topo*100))+'%" title="'+_vgEsc(lab)+' — entrou '+fmt(b)+'"></span></div>';
+  }).join('');
+  document.getElementById('vgVrLbls').innerHTML=g.map(function(m){
+    var nome=String(MLAB[m]||m).split(' ')[0].slice(0,3);
+    return '<div class="vg-mes-lbl"'+(m===currentMonth&&!periodo?' style="color:#141413;font-weight:600"':'')+'>'+nome+'</div>';
+  }).join('');
+  document.getElementById('vgVrTab').innerHTML='<div class="tbl-wrap" style="margin-top:14px"><table><thead><tr><th>Mês</th><th>Vendido</th><th>Entrou</th><th>Diferença</th></tr></thead><tbody>'+
+    g.map(function(m){var a=rvVendidoMes(m),b=rvRecebidoMes(m),d=Math.round((b-a)*100)/100;
+      return '<tr><td>'+_vgEsc(MLAB[m]||m)+'</td><td>'+fmt(a)+'</td><td>'+fmt(b)+'</td><td style="color:'+(d<0?'#B4271F':'#17795E')+'">'+(d>=0?'+':'')+fmt(d)+'</td></tr>';}).join('')+
+    '</tbody></table></div>';
+}
+
 function renderVisao(){
   if(!document.getElementById('vgHeroVal'))return;
   var meses=_vgMeses(), periodo=(_vgModo==='periodo');
@@ -5482,6 +5551,7 @@ function renderVisao(){
   try{rvRenderAprov();}catch(e){console.error('rvRenderAprov',e);}
   try{rvRenderEquipe();}catch(e){console.error('rvRenderEquipe',e);}
   try{rvRenderReceber();}catch(e){console.error('rvRenderReceber',e);}
+  try{rvRenderVr(meses,periodo);}catch(e){console.error('rvRenderVr',e);}
   try{rvRenderForn();}catch(e){console.error('rvRenderForn',e);}
   // ---------- v42: CARTEIRA PARADA POR VENDEDOR (+30 dias sem resposta) ----------
   var _par={};
