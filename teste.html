@@ -976,6 +976,23 @@ body.rv-lateral #rvSub{display:flex}
       <div id="vrImportMsg" style="margin-top:12px"></div>
     </div>
     <div class="card">
+      <div class="card-hd"><h3 class="card-title">O.S. sem vendedor no sistema</h3></div>
+      <div class="alert alert-info">Quando o sistema exporta uma venda no total da loja mas <strong>sem vendedor</strong>, ela não entra no PDF de ninguém e fica fora do ranking e da premiação. Diga aqui de quem é: a correção fica guardada e <strong>volta sozinha a cada importação</strong>, sem precisar refazer.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+        <div class="field"><label>O.S.</label><input type="text" id="sdOS" placeholder="V50679"></div>
+        <div class="field"><label>Data</label><input type="text" id="sdData" placeholder="06/02/2026"></div>
+        <div class="field"><label>Cliente</label><input type="text" id="sdCliente" placeholder="opcional"></div>
+        <div class="field"><label>Valor</label><input type="text" id="sdValor" placeholder="38,24"></div>
+        <div class="field"><label>Vendedor</label><select id="sdVendedor"></select></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-teal" onclick="rvAddSemDono()">➕ Gravar a correção</button>
+        <button class="btn btn-ghost" onclick="rvAplicarSemDonoBotao()">🔁 Aplicar as correções agora</button>
+      </div>
+      <div id="sdMsg" style="margin-top:10px"></div>
+      <div id="sdLista" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
       <div class="card-hd"><h3 class="card-title">Importar Recebido — Comissão (PDF do sistema ou CSV)</h3></div>
       <div class="alert alert-info">📄 No sistema: relatório <strong>Comissão do Período</strong> do mês, com todos os vendedores, baixado em PDF. É o <strong>recebido</strong>: o que entrou no caixa e a base do pagamento da premiação. Pode ser um PDF com todos os vendedores ou um PDF por vendedor (selecione todos de uma vez). Só é aceito se a soma bater com o TOTAL de cada PDF. Devoluções e estornos (valores negativos) são descontados. Ainda aceita o CSV antigo.</div>
       <div class="field"><label>Arquivo PDF ou CSV</label><input type="file" id="csvFile" accept=".pdf,application/pdf,.csv" multiple style="padding:8px"></div>
@@ -1990,11 +2007,11 @@ function entrarNoApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('hUser').textContent=me.name;
-  document.getElementById('hRole').textContent=me.role==='admin'?'ADMIN':'VENDEDOR';
+  document.getElementById('hRole').textContent=rvSelosPapel();
   const ms=document.getElementById('monthSelect');
   ms.innerHTML=MONTHS.map(function(m){return '<option value="'+m+'">'+MLAB[m]+'</option>';}).join('');
   ms.value=currentMonth;
-  if(me.role==='admin'){
+  if(rvEhGestao()){
     document.getElementById('adminTabs').classList.remove('hidden');
     document.getElementById('vendTabs').classList.add('hidden');
     const de=document.getElementById('resDe'),ate=document.getElementById('resAte');
@@ -2433,7 +2450,7 @@ function saveData(){
   if(antes){
     // v38: o admin grava o mes inteiro em LOTE (1 chamada a cada 150 linhas).
     // Antes era 1 chamada por linha: 220 vendas = 20 a 40 min, e fechar a pagina perdia o resto.
-    var _lote=(me&&me.role==='admin');
+    var _lote=rvEhGestao();
     Object.keys(TABELAS_S).forEach(function(nome){
       var meta=TABELAS_S[nome];
       var d=diffTabela(meta,agora[nome],antes[nome]);
@@ -2741,7 +2758,7 @@ function openVendDataModal(usuario){
   document.getElementById('vendDataModal').classList.remove('hidden');
 }
 function closeVendDataModal(){document.getElementById('vendDataModal').classList.add('hidden');}
-function saveVendData(){
+function saveVendData(){if(!rvPode('usuarios')){rvBloqueado('mexer no cadastro de usuario');return;}
   const usuario=document.getElementById('vendDataId').value;
   const nome=document.getElementById('vendDataNome').value.trim();
   const papel=document.getElementById('vendDataPapel').value;
@@ -2790,7 +2807,7 @@ function openProfEditModal(nome){
   document.getElementById('profEditModal').classList.remove('hidden');
 }
 function closeProfEditModal(){document.getElementById('profEditModal').classList.add('hidden');}
-function saveProfEdit(){
+function saveProfEdit(){if(!rvPode('rt')){rvBloqueado('o cadastro de profissionais');return;}
   const orig=document.getElementById('profEditId').value;
   const p=G.profissionais.find(x=>normStr(x.nome)===normStr(orig));if(!p)return;
   p.nome=document.getElementById('profEditNome').value.trim();
@@ -2916,7 +2933,7 @@ function renderConfig(){
   }).join('');
 }
 
-function salvarConfig(){
+function salvarConfig(){if(!rvPode('config')){rvBloqueado('a regra de premiacao e as configuracoes');return;}
   const pvPct=parseInt(document.getElementById('cfgPvPct').value)||40;
   const meta=parseFloat(document.getElementById('cfgMeta').value)||300000;
   const bonus=parseFloat(document.getElementById('cfgBonus').value)||150;
@@ -2990,7 +3007,7 @@ function mesNumero(nome){
 
 function renderAll(){
   try{populateSelects();}catch(e){console.warn('populateSelects:',e);}
-  if(me.role==='admin'){
+  if(rvEhGestao()){
     const fns=[vgPrepararSelects,renderVisao,clPrepararSelect,renderClientes,renderPerdas,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
     fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name+' erro:',e);}});
   }else{
@@ -3637,7 +3654,7 @@ function limparOrcMes(){
   document.getElementById('orcImportMsg').innerHTML='<div class="alert">✅ Orçamentos apagados. Reimporte os arquivos.</div>';
 }
 
-function importCSVOrcamentos(){
+function importCSVOrcamentos(){if(!rvPode('importar')){rvBloqueado('importar os orcamentos');return;}
   const input=document.getElementById('orcCsvFile');
   const msg=document.getElementById('orcImportMsg');
   if(!input.files.length){msg.innerHTML='<div class="alert alert-err">❌ Selecione pelo menos um arquivo</div>';return;}
@@ -3714,7 +3731,7 @@ function importCSVOrcamentos(){
 }
 
 
-function importCSV(){
+function importCSV(){if(!rvPode('importar')){rvBloqueado('importar o faturamento');return;}
   const file=document.getElementById('csvFile').files[0];
   const msg=document.getElementById('importMsg');
   if(!file){msg.innerHTML='<div class="alert alert-err">❌ Selecione arquivo</div>';return;}
@@ -3909,7 +3926,7 @@ function limparVendedoresTodos(){
 }
 
 // ===== VENDEDORES (GLOBAL) =====
-function addVendedor(){
+function addVendedor(){if(!rvPode('usuarios')){rvBloqueado('criar ou mexer em usuario');return;}
   const n=document.getElementById('vNome').value.trim();
   const u=document.getElementById('vUser').value.trim().toLowerCase();
   const s=document.getElementById('vSenha').value;
@@ -3929,10 +3946,10 @@ function addVendedor(){
   );
 }
 function renderVendedores(){document.getElementById('tbVends').innerHTML=G.vendedores.length?G.vendedores.map(v=>{const u=v.usuario||v.user||'';const papel=v.papel||'vendedor';const tv=rvBaseFaixa(currentMonth,v.nome);const badge=papel==='admin'?'<span class="badge b-orange">admin</span>':((papel==='entrega'||papel==='motorista')?'<span class="badge" style="background:#04AFB2;color:#fff">entrega</span>':'<span class="badge b-blue">vendedor</span>');return `<tr><td><strong>${v.nome}</strong> ${badge}</td><td><code>${u}</code></td><td>${fmt(tv)}</td><td>${getFaixa(tv)}</td><td><button class="btn btn-sm btn-ghost" onclick="openVendDataModal(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Editar</button> <button class="btn btn-sm btn-ghost" onclick="openVendEditModal(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Resetar senha</button> <button class="btn btn-sm btn-danger" onclick="delVend(&quot;${u.replace(/"/g,'&quot;')}&quot;)">Remover</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="5">Nenhum</td></tr>';}
-function delVend(usuario){if(!confirm('Remover o acesso de "'+usuario+'"? A pessoa não conseguirá mais logar.'))return;chamarPorta({action:'removeUser',token:_token,usuario:usuario},function(res){if(!res||!res.ok){alert('Erro ao remover: '+((res&&res.erro)||''));return;}recarregarDaNuvem();},function(err){console.error('[removeUser]',err);alert('Falha de conexão.');});}
+function delVend(usuario){if(!rvPode('usuarios')){rvBloqueado('remover usuario');return;}if(!confirm('Remover o acesso de "'+usuario+'"? A pessoa não conseguirá mais logar.'))return;chamarPorta({action:'removeUser',token:_token,usuario:usuario},function(res){if(!res||!res.ok){alert('Erro ao remover: '+((res&&res.erro)||''));return;}recarregarDaNuvem();},function(err){console.error('[removeUser]',err);alert('Falha de conexão.');});}
 
 // ===== FORNECEDORES (GLOBAL) =====
-function addForn(){const n=document.getElementById('fornNome').value.trim();const pgt=document.getElementById('fornPgt').value;const c=document.getElementById('fornContato').value.trim();const o=document.getElementById('fornObs').value.trim();if(!n){alert('Nome obrigatório');return;}if(G.fornecedores.some(f=>normStr(f.nome)===normStr(n))){alert('Fornecedor já cadastrado');return;}G.fornecedores.push({nome:n,pgt,contato:c,obs:o});saveGlobal();renderAll();['fornNome','fornContato','fornObs'].forEach(id=>document.getElementById(id).value='');}
+function addForn(){if(!rvPode('editarFornecedor')){rvBloqueado('o cadastro de fornecedores');return;}const n=document.getElementById('fornNome').value.trim();const pgt=document.getElementById('fornPgt').value;const c=document.getElementById('fornContato').value.trim();const o=document.getElementById('fornObs').value.trim();if(!n){alert('Nome obrigatório');return;}if(G.fornecedores.some(f=>normStr(f.nome)===normStr(n))){alert('Fornecedor já cadastrado');return;}G.fornecedores.push({nome:n,pgt,contato:c,obs:o});saveGlobal();renderAll();['fornNome','fornContato','fornObs'].forEach(id=>document.getElementById(id).value='');}
 function renderForns(){
   // Ordenar alfabeticamente
   const sorted=[...G.fornecedores].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
@@ -4001,7 +4018,7 @@ function renderFornDetail(){
   html+='</tbody></table></div>';
   box.innerHTML=html;
 }
-function delForn(nome){if(!confirm('Remover o fornecedor "'+nome+'"?'))return;G.fornecedores=G.fornecedores.filter(f=>normStr(f.nome)!==normStr(nome));saveGlobal();renderAll();}
+function delForn(nome){if(!rvPode('editarFornecedor')){rvBloqueado('o cadastro de fornecedores');return;}if(!confirm('Remover o fornecedor "'+nome+'"?'))return;G.fornecedores=G.fornecedores.filter(f=>normStr(f.nome)!==normStr(nome));saveGlobal();renderAll();}
 
 // ===== PEDIDOS =====
 function addPedido(){const prod=document.getElementById('pProd').value.trim();const qtd=document.getElementById('pQtd').value.trim();const qtdComp=String((document.getElementById('pQtdComp')||{}).value||'').trim();const cli=document.getElementById('pCliente').value.trim();const forn=document.getElementById('pForn').value;const os=document.getElementById('pOS').value.trim().toUpperCase();const solic=document.getElementById('pSolic').value.trim();const valor=parseFloat((document.getElementById('pValor')||{}).value)||0;const prazo=(document.getElementById('pPrazo')||{}).value||'';if(!prod){alert('Informe ao menos o produto');return;}const pTipo=(document.getElementById('pTipo')||{}).value||'venda';S.pedidos.push({id:Date.now(),data:hojeISO(),produto:prod,qtd,qtdComp,cliente:cli,fornecedor:forn,os,solicitante:solic||me.name,status:'Pedido',tipo:pTipo,valor,prazo,ocorrencia:'',dataCar:'',pgtStatus:'Pendente',pgtData:'',pgtForma:''});saveData();renderAll();['pProd','pQtd','pQtdComp','pCliente','pOS','pSolic','pValor','pPrazo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('pForn').value='';}
@@ -4015,9 +4032,9 @@ function renderPedidos(){const pf=((document.getElementById('pedProdFilter')||{}
   const solSel=document.getElementById('pedSolicFilter');if(solSel){const cur=solSel.value;const sols=[...new Set(S.pedidos.map(p=>p.solicitante).filter(Boolean))];solSel.innerHTML='<option value="">Quem solicitou</option>'+sols.map(s=>'<option value="'+s+'">'+s+'</option>').join('');solSel.value=cur;}
   let f=S.pedidos.slice().sort((a,b)=>dataMs(b.data)-dataMs(a.data));if(pf)f=f.filter(p=>p.produto.toLowerCase().includes(pf));if(ffs.length)f=f.filter(p=>ffs.includes(p.fornecedor));if(sf)f=f.filter(p=>p.status===sf);if(solf)f=f.filter(p=>normStr(p.solicitante)===normStr(solf));document.getElementById('pedThead').innerHTML='<th>📍</th><th>Data</th><th>Tipo</th><th>Produto</th><th>Qtd solic.</th><th>Qtd compr.</th><th>Cliente</th><th>O.S.</th><th>Solicitante</th><th>Fornecedor</th><th>Status</th><th>💰 Valor</th><th>Ocorrência</th><th>Pgto</th><th>Ações</th>';document.getElementById('tbPedidos').innerHTML=f.length?f.map(p=>{const sem=pedSemaforo(p);const stBadge=p.status==='Solicitado'?'<span class="badge b-red">🔴 Não Pedido</span>':p.status==='Carregado'||p.status==='Entregue'?`<span class="badge b-green">${p.status}</span>`:p.status==='Em Trânsito'?`<span class="badge b-yellow">${p.status}</span>`:`<span class="badge b-blue">${p.status}</span>`;const tipoB=p.tipo==='estoque'?'<span class="badge b-blue">📦 Estoque</span>':'<span class="badge b-green">🛒 Venda</span>';return `<tr><td><span class="semafor ${sem}"></span></td><td>${fmtDataBR(p.data)}</td><td>${tipoB}</td><td>${p.produto}</td><td>${p.qtd||'—'}</td><td>${p.qtdComp||'<span style="color:var(--muted)">—</span>'}</td><td>${p.cliente||'—'}</td><td><code>${p.os||'-'}</code></td><td>${p.solicitante||'-'}</td><td>${p.fornecedor||'-'}</td><td>${stBadge}</td><td style="color:var(--teal);font-weight:600">${p.valor?'R$ '+p.valor.toLocaleString('pt-BR',{minimumFractionDigits:2}):'<span style="color:var(--muted)">—</span>'}</td><td>${p.ocorrencia||'-'}</td><td><span class="badge ${p.pgtStatus==='Pago'?'b-green':'b-orange'}">${p.pgtStatus||'Pendente'}</span></td><td><button class="btn btn-sm btn-ghost" onclick="openPedModal(${p.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="delPedido(${p.id})">Excluir</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="15">Nenhum</td></tr>';}
 function delPedido(id){const p=S.pedidos.find(x=>Number(x.id)===Number(id));if(!p)return;if(!confirm('Excluir o pedido de "'+(p.produto||'(sem produto)')+'"'+(p.cliente?' — cliente '+p.cliente:'')+'? Esta ação não pode ser desfeita.'))return;S.pedidos=S.pedidos.filter(x=>Number(x.id)!==Number(id));saveData();renderAll();}
-function openPedModal(id){const p=S.pedidos.find(x=>x.id===id);if(!p)return;document.getElementById('pmId').value=id;const setV=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val;};setV('pmProd',p.produto||'');setV('pmQtd',p.qtd||'');setV('pmQtdComp',p.qtdComp||'');setV('pmCliente',p.cliente||'');setV('pmOS',p.os||'');setV('pmSolic',p.solicitante||'');const pmForn=document.getElementById('pmForn');if(pmForn){pmForn.innerHTML='<option value="">— Selecione —</option>'+G.fornecedores.map(f=>'<option value="'+f.nome+'">'+f.nome+'</option>').join('');pmForn.value=p.fornecedor||'';}document.getElementById('pmStatus').value=p.status;const pmTipo=document.getElementById('pmTipo');if(pmTipo)pmTipo.value=p.tipo||'venda';const pmValor=document.getElementById('pmValor');if(pmValor)pmValor.value=p.valor||'';const pmPrazo=document.getElementById('pmPrazo');if(pmPrazo)pmPrazo.value=p.prazo||'';const occOpts=['Fora de linha','Sem estoque','Aguardar para pedir','Ver em outra loja'];document.getElementById('pmOcc').value=occOpts.includes(p.ocorrencia)?p.ocorrencia:(p.ocorrencia?'Outro':'');document.getElementById('pmOccOther').value=occOpts.includes(p.ocorrencia)?'':p.ocorrencia;document.getElementById('pmDataCar').value=p.dataCar||'';document.getElementById('pmPgtStatus').value=p.pgtStatus||'Pendente';document.getElementById('pmPgtData').value=p.pgtData||'';document.getElementById('pmPgtForma').value=p.pgtForma||'Pix';document.getElementById('pmPgtSection').style.display=me.role==='admin'?'block':'none';document.getElementById('pedModal').classList.remove('hidden');}
+function openPedModal(id){const p=S.pedidos.find(x=>x.id===id);if(!p)return;document.getElementById('pmId').value=id;const setV=(elId,val)=>{const el=document.getElementById(elId);if(el)el.value=val;};setV('pmProd',p.produto||'');setV('pmQtd',p.qtd||'');setV('pmQtdComp',p.qtdComp||'');setV('pmCliente',p.cliente||'');setV('pmOS',p.os||'');setV('pmSolic',p.solicitante||'');const pmForn=document.getElementById('pmForn');if(pmForn){pmForn.innerHTML='<option value="">— Selecione —</option>'+G.fornecedores.map(f=>'<option value="'+f.nome+'">'+f.nome+'</option>').join('');pmForn.value=p.fornecedor||'';}document.getElementById('pmStatus').value=p.status;const pmTipo=document.getElementById('pmTipo');if(pmTipo)pmTipo.value=p.tipo||'venda';const pmValor=document.getElementById('pmValor');if(pmValor)pmValor.value=p.valor||'';const pmPrazo=document.getElementById('pmPrazo');if(pmPrazo)pmPrazo.value=p.prazo||'';const occOpts=['Fora de linha','Sem estoque','Aguardar para pedir','Ver em outra loja'];document.getElementById('pmOcc').value=occOpts.includes(p.ocorrencia)?p.ocorrencia:(p.ocorrencia?'Outro':'');document.getElementById('pmOccOther').value=occOpts.includes(p.ocorrencia)?'':p.ocorrencia;document.getElementById('pmDataCar').value=p.dataCar||'';document.getElementById('pmPgtStatus').value=p.pgtStatus||'Pendente';document.getElementById('pmPgtData').value=p.pgtData||'';document.getElementById('pmPgtForma').value=p.pgtForma||'Pix';document.getElementById('pmPgtSection').style.display=rvPode('pagarFornecedor')?'block':'none';document.getElementById('pedModal').classList.remove('hidden');}
 function closePedModal(){document.getElementById('pedModal').classList.add('hidden');}
-function savePedModal(){const id=Number(document.getElementById('pmId').value);const p=S.pedidos.find(x=>x.id===id);if(!p)return;const gv=elId=>{const el=document.getElementById(elId);return el?el.value:undefined;};const prod=gv('pmProd');if(prod!==undefined)p.produto=prod.trim()||p.produto;const q=gv('pmQtd');if(q!==undefined)p.qtd=q.trim();const qc=gv('pmQtdComp');if(qc!==undefined)p.qtdComp=qc.trim();const cli=gv('pmCliente');if(cli!==undefined)p.cliente=cli.trim();const os=gv('pmOS');if(os!==undefined)p.os=os.trim().toUpperCase();const forn=gv('pmForn');if(forn!==undefined)p.fornecedor=forn;p.status=document.getElementById('pmStatus').value;const pmTipo=document.getElementById('pmTipo');if(pmTipo)p.tipo=pmTipo.value;const pmValor=document.getElementById('pmValor');if(pmValor&&pmValor.value)p.valor=parseFloat(pmValor.value)||p.valor||0;const pmPrazo=document.getElementById('pmPrazo');if(pmPrazo)p.prazo=pmPrazo.value||p.prazo||'';const occ=document.getElementById('pmOcc').value;p.ocorrencia=occ==='Outro'?document.getElementById('pmOccOther').value:occ;p.dataCar=document.getElementById('pmDataCar').value;if(me.role==='admin'){p.pgtStatus=document.getElementById('pmPgtStatus').value;p.pgtData=document.getElementById('pmPgtData').value;p.pgtForma=document.getElementById('pmPgtForma').value;}saveData();renderAll();closePedModal();}
+function savePedModal(){const id=Number(document.getElementById('pmId').value);const p=S.pedidos.find(x=>x.id===id);if(!p)return;const gv=elId=>{const el=document.getElementById(elId);return el?el.value:undefined;};const prod=gv('pmProd');if(prod!==undefined)p.produto=prod.trim()||p.produto;const q=gv('pmQtd');if(q!==undefined)p.qtd=q.trim();const qc=gv('pmQtdComp');if(qc!==undefined)p.qtdComp=qc.trim();const cli=gv('pmCliente');if(cli!==undefined)p.cliente=cli.trim();const os=gv('pmOS');if(os!==undefined)p.os=os.trim().toUpperCase();const forn=gv('pmForn');if(forn!==undefined)p.fornecedor=forn;p.status=document.getElementById('pmStatus').value;const pmTipo=document.getElementById('pmTipo');if(pmTipo)p.tipo=pmTipo.value;const pmValor=document.getElementById('pmValor');if(pmValor&&pmValor.value)p.valor=parseFloat(pmValor.value)||p.valor||0;const pmPrazo=document.getElementById('pmPrazo');if(pmPrazo)p.prazo=pmPrazo.value||p.prazo||'';const occ=document.getElementById('pmOcc').value;p.ocorrencia=occ==='Outro'?document.getElementById('pmOccOther').value:occ;p.dataCar=document.getElementById('pmDataCar').value;if(rvPode('pagarFornecedor')){p.pgtStatus=document.getElementById('pmPgtStatus').value;p.pgtData=document.getElementById('pmPgtData').value;p.pgtForma=document.getElementById('pmPgtForma').value;}saveData();renderAll();closePedModal();}
 
 // ===== PÓS-VENDA =====
 function osBase(os){
@@ -4187,15 +4204,15 @@ function savePV(){const os=osBase(document.getElementById('pvOS').value);const p
   S.posvenda[os]={...existente,fotoStatus:document.getElementById('pvFotoStatus').value,fotoDesc:document.getElementById('pvFotoDesc').value,fotoLink:document.getElementById('pvFotoLink').value,avalStatus:document.getElementById('pvAvalStatus').value,avalNota:document.getElementById('pvAvalNota').value,avalLink:document.getElementById('pvAvalLink').value,follow3:novoF3,follow15:novoF15,follow30:novoF30,followObs,dataF3,dataF15,dataF30,profNome:prof,profValor:profVal};if(prof&&profVal>0&&!S.indicacoes.some(i=>i.os===os)){S.indicacoes.push({id:Date.now(),prof,vend:me.name,venda:profVal,data:hojeISO(),rt:profVal*0.03,os});}saveData();renderAll();closePVModal();}
 
 // ===== PROFISSIONAIS (GLOBAL) =====
-function addProf(){const n=document.getElementById('prNome').value.trim();const e=document.getElementById('prEsp').value;const t=document.getElementById('prTel').value.trim();const p=document.getElementById('prPix').value.trim();if(!n||!e){alert('Preencha nome e especialidade');return;}if(G.profissionais.some(x=>normStr(x.nome)===normStr(n))){alert('Profissional já cadastrado');return;}G.profissionais.push({nome:n,esp:e,tel:t,pix:p});saveGlobal();renderAll();['prNome','prTel','prPix'].forEach(id=>document.getElementById(id).value='');document.getElementById('prEsp').value='';}
+function addProf(){if(!rvPode('rt')){rvBloqueado('o cadastro de profissionais');return;}const n=document.getElementById('prNome').value.trim();const e=document.getElementById('prEsp').value;const t=document.getElementById('prTel').value.trim();const p=document.getElementById('prPix').value.trim();if(!n||!e){alert('Preencha nome e especialidade');return;}if(G.profissionais.some(x=>normStr(x.nome)===normStr(n))){alert('Profissional já cadastrado');return;}G.profissionais.push({nome:n,esp:e,tel:t,pix:p});saveGlobal();renderAll();['prNome','prTel','prPix'].forEach(id=>document.getElementById(id).value='');document.getElementById('prEsp').value='';}
 function renderProfs(){document.getElementById('tbProfs').innerHTML=G.profissionais.length?G.profissionais.map(p=>`<tr><td><strong>${p.nome}</strong></td><td>${p.esp}</td><td>${p.tel||'-'}</td><td><code>${p.pix||'-'}</code></td><td><button class="btn btn-sm btn-ghost" onclick="openProfEditModal(&quot;${p.nome.replace(/"/g,'&quot;')}&quot;)">Editar</button> <button class="btn btn-sm btn-danger" onclick="delProf(&quot;${p.nome.replace(/"/g,'&quot;')}&quot;)">Remover</button></td></tr>`).join(''):'<tr><td class="empty-row" colspan="5">Nenhum</td></tr>';}
-function delProf(nome){if(!confirm('Remover o profissional "'+nome+'"?'))return;G.profissionais=G.profissionais.filter(p=>normStr(p.nome)!==normStr(nome));saveGlobal();renderAll();}
+function delProf(nome){if(!rvPode('rt')){rvBloqueado('o cadastro de profissionais');return;}if(!confirm('Remover o profissional "'+nome+'"?'))return;G.profissionais=G.profissionais.filter(p=>normStr(p.nome)!==normStr(nome));saveGlobal();renderAll();}
 
 // ===== RT =====
 function renderRT(){const cons={};indicacoesValidas().forEach(i=>{if(!cons[i.prof])cons[i.prof]={total:0,qtd:0,rt:0};cons[i.prof].total+=i.venda;cons[i.prof].qtd++;cons[i.prof].rt+=i.rt;});const sorted=Object.entries(cons).sort((a,b)=>b[1].rt-a[1].rt).slice(0,5);const medals=['🥇','🥈','🥉','4️⃣','5️⃣'];document.getElementById('ranking').innerHTML=sorted.length?sorted.map((e,i)=>{const[n,d]=e;const pr=G.profissionais.find(p=>p.nome===n);return `<div style="display:flex;align-items:center;gap:16px;padding:16px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;background:var(--bg)"><div style="font-size:28px;width:40px;text-align:center">${medals[i]}</div><div style="flex:1"><div style="font-weight:700">${n}</div><div style="font-size:12px;color:var(--muted)">${pr?pr.esp:'-'} • ${d.qtd} indicações</div></div><div style="text-align:right"><div style="font-weight:700">${d.qtd}</div><div style="font-size:12px;color:var(--warning)">${fmt(d.rt)}</div></div></div>`;}).join(''):'<p style="text-align:center;color:var(--muted)">Sem dados</p>';document.getElementById('tbRT').innerHTML=Object.keys(cons).length?Object.entries(cons).map(([n,d])=>{const pr=G.profissionais.find(p=>p.nome===n);const rtp=S.rtpagtos.find(r=>r.prof===n);const sem=(rtp||{}).status==='Pago'?'semafor-green':'semafor-red';return `<tr><td><span class="semafor ${sem}"></span></td><td><strong>${n}</strong></td><td>${pr?pr.esp:'-'}</td><td>${d.qtd}</td><td>${fmt(d.total)}</td><td>${fmt(d.rt)}</td><td><span class="badge ${(rtp||{}).status==='Pago'?'b-green':'b-orange'}">${rtp?rtp.status:'Pendente'}</span></td><td>${(rtp||{}).data||'-'}</td><td><code>${(pr||{}).pix||'-'}</code></td><td><button class="btn btn-sm btn-ghost" onclick="openRTModal('${n}')">Registrar</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="10">Nenhuma</td></tr>';}
 function openRTModal(prof){const rtp=S.rtpagtos.find(r=>r.prof===prof);document.getElementById('rtProf').value=prof;document.getElementById('rtName').value=prof;document.getElementById('rtStatus').value=(rtp||{}).status||'Pendente';document.getElementById('rtData').value=(rtp||{}).data||'';document.getElementById('rtModal').classList.remove('hidden');}
 function closeRTModal(){document.getElementById('rtModal').classList.add('hidden');}
-function saveRT(){const prof=document.getElementById('rtProf').value;const status=document.getElementById('rtStatus').value;const data=document.getElementById('rtData').value;const idRT=currentMonth+'|'+prof;const i=S.rtpagtos.findIndex(r=>r.prof===prof);if(i===-1)S.rtpagtos.push({id:idRT,prof,status,data});else S.rtpagtos[i]={...S.rtpagtos[i],id:idRT,prof,status,data};saveData();renderAll();closeRTModal();}
+function saveRT(){if(!rvPode('rt')){rvBloqueado('o pagamento de RT a profissional');return;}const prof=document.getElementById('rtProf').value;const status=document.getElementById('rtStatus').value;const data=document.getElementById('rtData').value;const idRT=currentMonth+'|'+prof;const i=S.rtpagtos.findIndex(r=>r.prof===prof);if(i===-1)S.rtpagtos.push({id:idRT,prof,status,data});else S.rtpagtos[i]={...S.rtpagtos[i],id:idRT,prof,status,data};saveData();renderAll();closeRTModal();}
 
 // ===== EXPORTAR =====
 function exportCSV(tipo){let csv='',fn='';if(tipo==='orcamentos'){csv='Num,Cliente,Telefone,Vendedor,Valor,Status,OS\n';S.orcamentos.filter(_doMes).forEach(o=>csv+=`"${o.num||''}","${o.cliente}","${o.tel||''}","${o.vendedor}",${o.valor},"${o.status}","${o.os||''}"\n`);fn='orcamentos.csv';}else if(tipo==='pedidos'){csv='Data,Produto,QtdSolicitada,QtdComprada,Cliente,Fornecedor,OS,Status,Ocorrencia,Pgto,DataPgto,Forma\n';S.pedidos.forEach(p=>csv+=`"${p.data}","${p.produto}","${p.qtd}","${p.qtdComp||''}","${p.cliente}","${p.fornecedor}","${p.os}","${p.status}","${p.ocorrencia}","${p.pgtStatus}","${p.pgtData}","${p.pgtForma}"\n`);fn='pedidos.csv';}else if(tipo==='posvenda'){csv='OS,Cliente,Vendedor,Foto,Avaliacao,F3,F15,F30,Profissional\n';S.vendas.forEach(v=>{const pv=S.posvenda[osBase(v.os)]||{};csv+=`"${v.os}","${v.cliente}","${v.vendedor}","${pv.fotoStatus||'-'}","${pv.avalNota||'-'}","${pv.follow3||'-'}","${pv.follow15||'-'}","${pv.follow30||'-'}","${pv.profNome||'-'}"\n`;});fn='posvenda.csv';}else if(tipo==='vendas'){csv='Data,Vendedor,OS,Cliente,Valor\n';S.vendas.forEach(v=>csv+=`"${v.data}","${v.vendedor}","${v.os}","${v.cliente}",${v.valor}\n`);fn='vendas.csv';}const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=fn;document.body.appendChild(link);link.click();document.body.removeChild(link);document.getElementById('exportMsg').innerHTML=`<div class="alert">✅ ${fn} baixado!</div>`;setTimeout(()=>document.getElementById('exportMsg').innerHTML='',3000);}
@@ -4476,7 +4493,7 @@ function renderVendBonif(){
   document.getElementById('vbn-saldo').textContent=fmtShort(totPagar-pago+_myAntes);
   document.getElementById('vbntbBonif').innerHTML=my.length?my.map(b=>{const badge=b.status==='Pago'?'b-green':'b-orange';return `<tr><td>${fmtDataBR(b.data)}${rvTagMes(b._de)}</td><td><code>${b.numVenda||'-'}</code></td><td>${b.produto||'-'}</td><td><span class="badge b-blue">${b.categoria}</span></td><td>${fmt(b.valor)}</td><td><strong style="color:var(--success)">${fmt(b.valorPagar)}</strong></td><td><span class="badge ${badge}">${b.status}</span></td><td><button class="btn btn-sm btn-ghost" onclick="openVbnModal(${b.id})">Editar</button></td></tr>`;}).join(''):'<tr><td class="empty-row" colspan="8">Nenhum lançamento</td></tr>';
 }
-function delBonif(id){const b=S.bonificacoes.find(x=>Number(x.id)===Number(id));if(!b)return;if(!confirm('Excluir a bonificação de '+b.vendedor+' ('+b.categoria+', '+fmt(b.valorPagar)+')? Esta ação não pode ser desfeita.'))return;S.bonificacoes=S.bonificacoes.filter(x=>Number(x.id)!==Number(id));saveData();renderAll();}
+function delBonif(id){if(!rvPode('editarBonificacao')){rvBloqueado('as bonificacoes de louca e metal');return;}const b=S.bonificacoes.find(x=>Number(x.id)===Number(id));if(!b)return;if(!confirm('Excluir a bonificação de '+b.vendedor+' ('+b.categoria+', '+fmt(b.valorPagar)+')? Esta ação não pode ser desfeita.'))return;S.bonificacoes=S.bonificacoes.filter(x=>Number(x.id)!==Number(id));saveData();renderAll();}
 function openBnModal(id){
   const b=S.bonificacoes.find(x=>x.id===id);if(!b)return;
   document.getElementById('bnId').value=id;
@@ -4491,7 +4508,7 @@ function openBnModal(id){
   document.getElementById('bnModal').classList.remove('hidden');
 }
 function closeBnModal(){document.getElementById('bnModal').classList.add('hidden');}
-function saveBnModal(){
+function saveBnModal(){if(!rvPode('editarBonificacao')){rvBloqueado('as bonificacoes de louca e metal');return;}
   const id=Number(document.getElementById('bnId').value);
   const b=S.bonificacoes.find(x=>x.id===id);if(!b)return;
   const valor=parseFloat(document.getElementById('bnValor').value)||0;
@@ -4913,11 +4930,49 @@ var RV_SECOES=[
    telas:[['t-import','Importar'],['t-export','Exportar'],['t-config','Configurações']]}
 ];
 var _rvSecAtual='visao';
+// v53: perfil GERENTE DE VENDAS.
+// Regra de ouro: o gerente cuida de gente e de venda; a sócia cuida do dinheiro.
+// Ele enxerga a equipe inteira com números (não é cofre de vendedor), mas não toca no que é pagamento,
+// regra de premiação, usuário ou importação do faturamento.
+var RV_TELAS_GERENTE=['t-visao','t-dash','t-resumo','t-clientes','t-vendas-geral','t-funil-leads','t-entregas-pend','t-pedidos','t-fornecedores','t-bonificacoes','t-export'];
+var RV_PERM={
+  admin:  {gestao:true, config:true, usuarios:true, importar:true, rt:true, pagarFornecedor:true, editarBonificacao:true, apagarEmMassa:true, editarFornecedor:true},
+  gerente:{gestao:true, config:false,usuarios:false,importar:false,rt:false,pagarFornecedor:false,editarBonificacao:false,apagarEmMassa:false,editarFornecedor:false}
+};
+function rvPapel(){return (me&&me.role)||'vendedor';}
+function rvEhGestao(){var p=rvPapel();return p==='admin'||p==='gerente';}
+function rvEhAdmin(){return rvPapel()==='admin';}
+function rvPode(acao){var P=RV_PERM[rvPapel()];return !!(P&&P[acao]);}
+function rvVeTela(id){
+  var p=rvPapel();
+  if(p==='admin')return true;
+  if(p!=='gerente')return false;
+  return RV_TELAS_GERENTE.indexOf(id)>=0;
+}
+function rvSelosPapel(){
+  var p=rvPapel();
+  return p==='admin'?'ADMIN':(p==='gerente'?'GERENTE':'VENDEDOR');
+}
+// filtra o menu lateral pelo papel; secao que ficou sem tela some
+function rvSecoesDoPapel(){
+  if(rvEhAdmin())return RV_SECOES;
+  var out=[];
+  RV_SECOES.forEach(function(sec){
+    var telas=sec.telas.filter(function(t){return rvVeTela(t[0]);});
+    if(telas.length)out.push({id:sec.id,nome:sec.nome,ico:sec.ico,telas:telas});
+  });
+  return out;
+}
+// aviso curto na tela quando o gerente esbarra no limite
+function rvBloqueado(oque){
+  alert('Isso é da gestão da sócia: '+oque+'.\n\nO seu acesso de gerente vê e cobra a equipe, mas não mexe em pagamento, regra de premiação, usuário nem importação.');
+}
+
 
 function rvMontarMenu(){
   var alvo=document.getElementById('rvSecoes');
   if(!alvo)return;
-  alvo.innerHTML=RV_SECOES.map(function(sec){
+  alvo.innerHTML=rvSecoesDoPapel().map(function(sec){
     return '<button type="button" class="rv-secao" id="rvSec_'+sec.id+'" onclick="rvAbrirSecao(\''+sec.id+'\')">'+
       '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" '+
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+sec.ico+'</svg>'+
@@ -4927,11 +4982,14 @@ function rvMontarMenu(){
   rvAbrirSecao(_rvSecAtual);
 }
 function rvAbrirSecao(id){
+  var LS=rvSecoesDoPapel();
   var sec=null;
-  for(var i=0;i<RV_SECOES.length;i++){ if(RV_SECOES[i].id===id)sec=RV_SECOES[i]; }
+  for(var i=0;i<LS.length;i++){ if(LS[i].id===id)sec=LS[i]; }
+  if(!sec&&LS.length)sec=LS[0];
   if(!sec)return;
-  _rvSecAtual=id;
-  RV_SECOES.forEach(function(x){
+  _rvSecAtual=sec.id;
+  id=sec.id;
+  LS.forEach(function(x){
     var b=document.getElementById('rvSec_'+x.id);
     if(b)b.className='rv-secao'+(x.id===id?' on':'');
   });
@@ -4945,6 +5003,7 @@ function rvAbrirSecao(id){
   rvAbrirTela(sec.telas[0][0]);
 }
 function rvAbrirTela(paneId){
+  if(!rvVeTela(paneId)){var _ls=rvSecoesDoPapel();if(!_ls.length)return;paneId=_ls[0].telas[0][0];}
   // clica no botao antigo (escondido) para preservar o comportamento original
   var bt=document.querySelector('#adminTabs button[onclick*="'+paneId+'"]');
   if(bt){ bt.click(); }
@@ -5326,7 +5385,7 @@ function _rvJuntarComissao(lidos,msg){
   R.meses=p.meses;R.periodo=p.periodo;R.erros=[];
   rvAplicarComissao(R,msg);
 }
-function rvAplicarComissao(r,msg){
+function rvAplicarComissao(r,msg){if(!rvPode('importar')){rvBloqueado('gravar a comissao recebida');return;}
   (function(){
     var fora=_rvForaDoMes(r);
     if(fora.length){msg.innerHTML=_rvListaErros('PDF recusado — nada foi gravado.',['o PDF pega meses que o painel não tem: '+fora.join(', ')]);return;}
@@ -5377,7 +5436,7 @@ function rvAplicarComissao(r,msg){
 }
 // VENDAS REALIZADAS: um PDF por vendedor (um mes ou varios); varios PDFs de uma vez
 var _rvVrPend=null;
-function rvImportarVendidoPdf(){
+function rvImportarVendidoPdf(){if(!rvPode('importar')){rvBloqueado('importar as vendas realizadas');return;}
   var inp=document.getElementById('vrPdfFiles'),msg=document.getElementById('vrImportMsg');
   if(!inp||!inp.files||!inp.files.length){msg.innerHTML=_rvAlerta('err','❌ Selecione os PDFs de Vendas Realizadas');return;}
   var files=Array.prototype.slice.call(inp.files),res=[],i=0;
@@ -5416,13 +5475,13 @@ function rvMostrarVendido(res,msg){
   if(ruins.length)h+=_rvListaErros(ruins.length+' PDF'+(ruins.length===1?'':'s')+' recusado'+(ruins.length===1?'':'s')+' (não entram):',ruins.map(function(r){return r.arquivo+': '+r.erros.join('; ');}));
   msg.innerHTML=h;
 }
-function rvConfirmarVendido(){
+function rvConfirmarVendido(){if(!rvPode('importar')){rvBloqueado('gravar as vendas realizadas');return;}
   var p=_rvVrPend,msg=document.getElementById('vrImportMsg');if(!p)return;_rvVrPend=null;
   var b=document.getElementById('vrConfirmarBtn');if(b)b.disabled=true;
   var porMes={};
   p.arquivos.forEach(function(r){r.meses.forEach(function(m){(porMes[m]=porMes[m]||[]).push(r);});});
   var lm=MONTHS.filter(function(m){return porMes[m];});
-  var nov=0,alt=0,igu=0,rem=0;
+  var nov=0,alt=0,igu=0,rem=0,man=0;
   lm.forEach(function(mes){
     _rvTrocaMes(mes);
     if(!S.vendido)S.vendido=[];
@@ -5445,11 +5504,108 @@ function rvConfirmarVendido(){
       S.vendido=S.vendido.filter(function(v){return normStr(v.vendedor)!==n||vistos[String(v.os).toUpperCase()]||!_rvDentro(v,r.de,r.ate);});
       rem+=antes-S.vendido.length;
     });
+    man+=rvAplicarSemDono(mes); // v51: devolve as O.S. corrigidas a mao que a importacao tiraria
     S._temVendido=true;
     saveData();
   });
   rvIrParaMes(lm[lm.length-1]);renderAll();
-  msg.innerHTML=_rvAlerta('','✅ <strong>Vendido gravado</strong> — '+(lm.length===1?_vgEsc(MLAB[lm[0]]||lm[0]):(lm.length+' meses ('+_vgEsc(_rvMesesTxt(lm))+')'))+': '+nov+' novas · '+alt+' atualizadas · '+igu+' iguais · '+rem+' saíram.'+(lm.length===1?(' Total vendido do mês: <strong>'+fmt(rvVendidoMes(lm[0]))+'</strong>.'):''));
+  msg.innerHTML=_rvAlerta('','✅ <strong>Vendido gravado</strong> — '+(lm.length===1?_vgEsc(MLAB[lm[0]]||lm[0]):(lm.length+' meses ('+_vgEsc(_rvMesesTxt(lm))+')'))+': '+nov+' novas · '+alt+' atualizadas · '+igu+' iguais · '+rem+' saíram.'+(man?(' <strong>'+man+' corrigida(s) à mão foram mantidas.</strong>'):'')+(lm.length===1?(' Total vendido do mês: <strong>'+fmt(rvVendidoMes(lm[0]))+'</strong>.'):''));
+}
+
+// v51: O.S. que o sistema exporta no total da loja mas sem vendedor.
+// A correcao fica gravada na configuracao: assim ela sobrevive a qualquer reimportacao futura.
+function rvSemDono(){
+  var l=(G.config&&G.config.vendasSemDono)||[];
+  return l.filter(function(x){return x&&x.os&&x.vendedor&&x.mes;});
+}
+function rvSemDonoNoMes(mes){
+  return rvSemDono().filter(function(x){return x.mes===mes;});
+}
+// recoloca as vendas corrigidas no mes aberto; devolve quantas entraram
+function rvAplicarSemDono(mes){
+  if(!S.vendido)S.vendido=[];
+  var n=0;
+  rvSemDonoNoMes(mes).forEach(function(x){
+    var k=String(x.os).toUpperCase();
+    var row={data:x.data,os:k,forma:x.forma||'',codCliente:x.codCliente||'',cliente:x.cliente||'',valor:Number(x.valor)||0,vendedor:x.vendedor};
+    var ex=null;
+    for(var i=0;i<S.vendido.length;i++){if(String(S.vendido[i].os).toUpperCase()===k){ex=S.vendido[i];break;}}
+    if(ex){var mud=normStr(ex.vendedor)!==normStr(x.vendedor)||Math.abs(_vgNum(ex.valor)-row.valor)>0.009;if(mud){Object.assign(ex,row);n++;}}
+    else{row.id=novoIdNum();S.vendido.push(row);n++;}
+  });
+  return n;
+}
+// roda em todos os meses que tem correcao (usado pelo botao e depois de importar)
+function rvAplicarSemDonoTudo(){
+  var meses={},tot=0;
+  rvSemDono().forEach(function(x){meses[x.mes]=1;});
+  var lista=MONTHS.filter(function(m){return meses[m];});
+  var volta=currentMonth;
+  lista.forEach(function(m){_rvTrocaMes(m);tot+=rvAplicarSemDono(m);S._temVendido=true;saveData();});
+  _rvTrocaMes(volta);
+  return {meses:lista.length,linhas:tot};
+}
+function rvRenderSemDono(){
+  var box=document.getElementById('sdLista');if(!box)return;
+  var l=rvSemDono();
+  var selV=document.getElementById('sdVendedor');
+  if(selV){
+    var cur=selV.value;
+    selV.innerHTML='<option value="">— escolha o vendedor —</option>'+G.vendedores.map(function(v){return '<option value="'+_vgEsc(v.nome)+'">'+_vgEsc(v.nome)+'</option>';}).join('');
+    selV.value=cur;
+  }
+  if(!l.length){box.innerHTML='<div style="color:var(--muted);font-size:13px">Nenhuma O.S. corrigida à mão por enquanto.</div>';return;}
+  var tot=l.reduce(function(a,x){return a+(Number(x.valor)||0);},0);
+  box.innerHTML='<div class="tbl-wrap"><table><thead><tr><th>O.S.</th><th>Data</th><th>Cliente</th><th>Valor</th><th>Vendedor</th><th></th></tr></thead><tbody>'+
+    l.map(function(x,i){
+      return '<tr><td><strong>'+_vgEsc(x.os)+'</strong></td><td>'+_vgEsc(_rvBRdata(x.data))+'</td><td>'+_vgEsc(x.cliente||'—')+'</td><td>'+fmt(x.valor)+'</td>'+
+        '<td><strong style="color:var(--teal)">'+_vgEsc(x.vendedor)+'</strong></td>'+
+        '<td><button class="btn btn-sm btn-ghost" onclick="rvTirarSemDono('+i+')">remover</button></td></tr>';
+    }).join('')+
+    '<tr style="background:var(--bg);font-weight:700"><td colspan="3">TOTAL</td><td>'+fmt(tot)+'</td><td colspan="2"></td></tr></tbody></table></div>';
+}
+function _rvBRdata(d){var s=String(d||'');if(/^\d{4}-\d{2}-\d{2}/.test(s)){var a=s.slice(0,10).split('-');return a[2]+'/'+a[1]+'/'+a[0];}return s;}
+function rvAddSemDono(){if(!rvPode('importar')){rvBloqueado('corrigir o dono de uma O.S.');return;}
+  var msg=document.getElementById('sdMsg');
+  var os=String((document.getElementById('sdOS')||{}).value||'').trim().toUpperCase();
+  var dt=String((document.getElementById('sdData')||{}).value||'').trim();
+  var cli=String((document.getElementById('sdCliente')||{}).value||'').trim();
+  var val=parseFloat(String((document.getElementById('sdValor')||{}).value||'').replace(/\./g,'').replace(',','.'));
+  var vend=String((document.getElementById('sdVendedor')||{}).value||'').trim();
+  if(!os){msg.innerHTML=_rvAlerta('err','Digite a O.S. (ex.: V50679).');return;}
+  if(!dt){msg.innerHTML=_rvAlerta('err','Digite a data da venda.');return;}
+  if(!isFinite(val)||val===0){msg.innerHTML=_rvAlerta('err','Digite o valor da venda.');return;}
+  if(!vend){msg.innerHTML=_rvAlerta('err','Escolha o vendedor.');return;}
+  var iso=rvDataISO(dt);
+  var mes=_rvMesDaData(iso);
+  if(!mes||MONTHS.indexOf(mes)<0){msg.innerHTML=_rvAlerta('err','Não reconheci o mês dessa data.');return;}
+  if(!G.config)G.config={};
+  if(!G.config.vendasSemDono)G.config.vendasSemDono=[];
+  var k=os;
+  G.config.vendasSemDono=G.config.vendasSemDono.filter(function(x){return String(x.os).toUpperCase()!==k;});
+  G.config.vendasSemDono.push({os:k,data:iso,cliente:cli,valor:val,vendedor:vend,mes:mes,forma:'',codCliente:''});
+  saveGlobal();
+  var r=rvAplicarSemDonoTudo();
+  renderAll();rvRenderSemDono();
+  ['sdOS','sdData','sdCliente','sdValor'].forEach(function(i){var el=document.getElementById(i);if(el)el.value='';});
+  msg.innerHTML=_rvAlerta('','✅ <strong>'+_vgEsc(k)+'</strong> agora é do(a) <strong>'+_vgEsc(vend)+'</strong> — '+fmt(val)+' em '+_vgEsc(_rvBRdata(iso))+'. A correção fica guardada e volta sozinha a cada importação.');
+}
+function rvTirarSemDono(i){if(!rvPode('importar')){rvBloqueado('corrigir o dono de uma O.S.');return;}
+  var l=(G.config&&G.config.vendasSemDono)||[];
+  var x=rvSemDono()[i];if(!x)return;
+  if(!confirm('Tirar a correção da O.S. '+x.os+'? Ela volta a ficar sem vendedor.'))return;
+  G.config.vendasSemDono=l.filter(function(y){return String(y.os).toUpperCase()!==String(x.os).toUpperCase();});
+  var volta=currentMonth;
+  _rvTrocaMes(x.mes);
+  S.vendido=(S.vendido||[]).filter(function(v){return String(v.os).toUpperCase()!==String(x.os).toUpperCase();});
+  saveData();_rvTrocaMes(volta);
+  saveGlobal();renderAll();rvRenderSemDono();
+  var msg=document.getElementById('sdMsg');if(msg)msg.innerHTML=_rvAlerta('orange','Correção da O.S. '+_vgEsc(x.os)+' removida.');
+}
+function rvAplicarSemDonoBotao(){
+  var msg=document.getElementById('sdMsg');
+  var r=rvAplicarSemDonoTudo();renderAll();
+  msg.innerHTML=_rvAlerta('','✅ Correções aplicadas: '+r.linhas+' venda(s) em '+r.meses+' mês(es).');
 }
 
 // v49: comparativo VENDIDO x RECEBIDO — numeros, grafico de barras lado a lado e tabela de apoio.
@@ -5624,6 +5780,7 @@ function renderVisao(){
   try{rvRenderEquipe();}catch(e){console.error('rvRenderEquipe',e);}
   try{rvRenderReceber();}catch(e){console.error('rvRenderReceber',e);}
   try{rvRenderVr(meses,periodo);}catch(e){console.error('rvRenderVr',e);}
+  try{rvRenderSemDono();}catch(e){console.error('rvRenderSemDono',e);}
   try{rvRenderForn();}catch(e){console.error('rvRenderForn',e);}
   // ---------- v42: CARTEIRA PARADA POR VENDEDOR (+30 dias sem resposta) ----------
   var _par={};
