@@ -127,6 +127,20 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
 .vg-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
 .vg-titulo{font-family:'Archivo','DM Sans',system-ui,sans-serif;font-size:25px;font-weight:700;line-height:1.1;margin:0}
 .vg-sub{font-size:12px;color:var(--vg-sec);margin-top:4px}
+/* v54 — Leitura da gestao */
+.lg-mud{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.lg-mud-i{background:var(--vg-fundo);border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:2px}
+.lg-mud-r{font-size:12px;color:var(--vg-sec)}
+.lg-mud-i b{font-size:19px;font-weight:700;color:#141413}
+.lg-al{border:1px solid var(--vg-linha);border-left:3px solid #A04F00;border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:12px;background:#fff}
+.lg-al.lg-alto{border-left-color:#B4271F;background:#FDF6F5}
+.lg-al-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:7px}
+.lg-al-n{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:#141413;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.lg-al-t{font-size:15px;font-weight:700;color:#141413;flex:1 1 auto;min-width:0}
+.lg-al-rs{font-size:15px;font-weight:700;color:#A04F00;white-space:nowrap}
+.lg-al-c{font-size:14px;line-height:1.55;color:#141413}
+.lg-al-d{margin-top:9px;padding-top:9px;border-top:1px solid var(--vg-linha);font-size:14px;line-height:1.55;color:#141413}
+@media (max-width:620px){.lg-mud{grid-template-columns:repeat(2,minmax(0,1fr))}.lg-al-rs{width:100%}}
 .vg-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .vg-seg{display:flex;padding:3px;border-radius:9px;background:#E7E3DA}
 .vg-seg button{padding:8px 15px;min-height:38px;border:0;border-radius:7px;background:transparent;
@@ -474,6 +488,15 @@ body.rv-lateral #rvSub{display:flex}
   </div>
 
   <!-- ===================== RESUMO ANUAL ===================== -->
+  <div id="t-leitura" class="tab-pane">
+    <div class="vg-topo">
+      <div>
+        <h2 class="vg-titulo">Leitura da gestão</h2>
+        <div class="vg-sub">O que mudou e o que precisa de decisão — em ordem de dinheiro. Só você e o Rogerlan veem esta tela.</div>
+      </div>
+    </div>
+    <div class="card"><div id="lgCorpo"></div></div>
+  </div>
   <div id="t-visao" class="tab-pane">
     <div class="vg-topo">
       <div>
@@ -3008,7 +3031,7 @@ function mesNumero(nome){
 function renderAll(){
   try{populateSelects();}catch(e){console.warn('populateSelects:',e);}
   if(rvEhGestao()){
-    const fns=[vgPrepararSelects,renderVisao,clPrepararSelect,renderClientes,renderPerdas,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
+    const fns=[renderLeitura,vgPrepararSelects,renderVisao,clPrepararSelect,renderClientes,renderPerdas,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
     fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name+' erro:',e);}});
   }else{
     const fns=[renderVendDashboard,renderLigarHoje,renderVendVendas,renderVendOrcs,renderVendPedidos,renderVendPV,renderVendBonif];
@@ -4917,7 +4940,7 @@ function renderClientes(){
 // entao todo comportamento que ja existia continua valendo.
 var RV_SECOES=[
   {id:'visao', nome:'Visão geral', ico:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
-   telas:[['t-visao','Resumo do mês']]},
+   telas:[['t-leitura','Leitura da gestão'],['t-visao','Resumo do mês']]},
   {id:'vendas', nome:'Vendas', ico:'<path d="m3 17 6-6 4 4 7-7"/><path d="M15 8h5v5"/>',
    telas:[['t-dash','Painel do mês'],['t-resumo','Resumo anual'],['t-clientes','Clientes'],['t-vendas-geral','Vendas e pós-venda'],['t-funil-leads','Orçamentos']]},
   {id:'entregas', nome:'Entregas', ico:'<path d="M3 7h10v9H3z"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
@@ -5606,6 +5629,274 @@ function rvAplicarSemDonoBotao(){
   var msg=document.getElementById('sdMsg');
   var r=rvAplicarSemDonoTudo();renderAll();
   msg.innerHTML=_rvAlerta('','✅ Correções aplicadas: '+r.linhas+' venda(s) em '+r.meses+' mês(es).');
+}
+
+// v54: LEITURA DA GESTAO — a tela da sócia e do sócio.
+// Nao e um relatorio: e uma lista do que precisa de decisao, em ordem de dinheiro.
+// As regras daqui sao as MESMAS da rotina automatica por e-mail, para os dois nunca discordarem.
+
+// ---- parametros das regras (ficam na Config, com padrao seguro) ----
+function rvParam(chave,padrao){
+  var v=G.config&&G.config[chave];
+  if(v===''||v===null||v===undefined)return padrao;
+  var n=Number(v);
+  return isFinite(n)?n:padrao;
+}
+function _lgDiasParado(){return rvParam('alertaDiasParado',7);}
+function _lgConcentracao(){return rvParam('alertaConcentracao',35);}
+function _lgQueda(){return rvParam('alertaQueda',30);}
+
+function _lgMesesComVendido(){return MONTHS.filter(rvTemVendido);}
+function _lgMesAnterior(m){
+  var i=MONTHS.indexOf(m);
+  for(var j=i-1;j>=0;j--){if(rvTemVendido(MONTHS[j]))return MONTHS[j];}
+  return null;
+}
+function _lgOrcsDoMes(){return (S.orcamentos||[]).filter(function(o){return o&&_doMes(o);});}
+function _lgUltimoToque(o){
+  var d=rvDataISO(o&&o.proxContato)||rvDataISO(o&&o.data);
+  return d||'';
+}
+function _lgDiasAtras(n){
+  var d=new Date();d.setDate(d.getDate()-n);
+  var p=function(x){return (x<10?'0':'')+x;};
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function _lgVendedoresAtivos(){
+  var out=[];
+  (G.vendedores||[]).forEach(function(v){
+    if(!v||!v.nome)return;
+    var p=String(v.papel||'vendedor').toLowerCase();
+    if(p==='entrega'||p==='motorista')return;
+    if(rvEhSocio(v.nome))return;
+    out.push(v.nome);
+  });
+  return out;
+}
+
+// ---- o motor: devolve a lista de alertas ja ordenada por dinheiro ----
+function rvAlertas(){
+  var A=[],m=currentMonth;
+  var vendido=rvVendidoMes(m), recebido=rvRecebidoMes(m), meta=getMetaColetiva();
+  var du=rvDiasUteisMes();
+  var porVend=rvPorVendedor(m);
+  var lista=[];
+  Object.keys(porVend).forEach(function(n){ if(!rvEhSocio(n)) lista.push({nome:n,valor:porVend[n].total}); });
+  lista.sort(function(a,b){return b.valor-a.valor;});
+
+  // 1) ritmo do mes
+  var proj=du.passados>0?(vendido/du.passados*du.total):0;
+  var faltaMeta=Math.max(0,meta-vendido);
+  var porDia=du.faltam>0?faltaMeta/du.faltam:0;
+  if(du.passados>=3&&proj<meta*0.95&&faltaMeta>0){
+    A.push({id:'ritmo',nivel:'alto',dinheiro:faltaMeta,titulo:'O mês não fecha na meta no ritmo de hoje',
+      corpo:'Dia '+du.passados+' de '+du.total+' dias úteis. Vendido até agora: <strong>'+fmt(vendido)+'</strong>. '+
+            'Nesse passo o mês fecha em <strong>'+fmt(proj)+'</strong>, contra meta de '+fmt(meta)+'.',
+      decisao:'Faltam '+fmt(faltaMeta)+' — são '+fmt(porDia)+' por dia útil nos '+du.faltam+' dias que sobram. Decida hoje o que muda: puxar a carteira parada, campanha de um produto, ou aceitar e ajustar a meta.',
+      tela:'t-dash'});
+  }
+
+  // 2) concentracao em um vendedor
+  // Dependencia nao e so "fatia grande": com 2 vendedores, 50% e o normal.
+  // So e dependencia quando o primeiro esta MUITO na frente do segundo.
+  if(lista.length&&vendido>0){
+    var pct=Math.round(lista[0].valor/vendido*100);
+    var folga=lista[1]?(lista[1].valor>0?lista[0].valor/lista[1].valor:99):99;
+    if(pct>=_lgConcentracao()&&folga>=rvParam('alertaFolga',1.6)){
+      A.push({id:'concentracao',nivel:'alto',dinheiro:lista[0].valor,titulo:'A loja depende demais de uma pessoa',
+        corpo:'<strong>'+_vgEsc(lista[0].nome)+'</strong> responde por <strong>'+pct+'%</strong> do vendido do mês ('+fmt(lista[0].valor)+' de '+fmt(vendido)+').'+
+              (lista[1]?(' O segundo colocado, '+_vgEsc(lista[1].nome)+', fez '+fmt(lista[1].valor)+' — '+(Math.round(folga*10)/10)+' vezes menos.'):' É a única pessoa vendendo no mês.'),
+        decisao:'Se essa pessoa faltar duas semanas, quem cobre '+fmt(lista[0].valor)+'? Defina o segundo nome e comece a passar carteira agora, não no dia da falta.',
+        tela:'t-resumo'});
+    }
+  }
+
+  // 3) carteira parada (dinheiro na mesa)
+  var limite=_lgDiasAtras(_lgDiasParado()), parados=[], vlrParado=0;
+  _lgOrcsDoMes().forEach(function(o){
+    if(!rvOrcAberto(o))return;
+    var t=_lgUltimoToque(o);
+    if(t&&t<limite){parados.push(o);vlrParado+=_vgNum(o.valor);}
+  });
+  if(parados.length){
+    var porQuem={};
+    parados.forEach(function(o){var n=o.vendedor||'—';porQuem[n]=(porQuem[n]||0)+_vgNum(o.valor);});
+    var det=Object.keys(porQuem).sort(function(a,b){return porQuem[b]-porQuem[a];})
+      .slice(0,4).map(function(n){return _vgEsc(n)+' '+fmt(porQuem[n]);}).join(' · ');
+    A.push({id:'parados',nivel:'alto',dinheiro:vlrParado,titulo:'Dinheiro parado na mesa',
+      corpo:'<strong>'+parados.length+' orçamento(s)</strong> sem contato há mais de '+_lgDiasParado()+' dias, somando <strong>'+fmt(vlrParado)+'</strong>.<br>'+
+            '<span style="color:var(--muted)">'+det+'</span>',
+      decisao:'Cada dia parado é um cliente a menos. Mande a lista para a equipe hoje e cobre o retorno de cada um até sexta.',
+      tela:'t-funil-leads'});
+  }
+
+  // 4) vendeu mas nao entrou no caixa
+  var ar=rvAReceber(null);
+  var faltaCaixa=0,qtdCaixa=0;
+  ar.lista.forEach(function(x){if(x.mes===m){faltaCaixa+=x.falta;qtdCaixa++;}});
+  faltaCaixa=Math.round(faltaCaixa*100)/100;
+  if(vendido>0&&faltaCaixa>vendido*0.3){
+    A.push({id:'caixa',nivel:'medio',dinheiro:faltaCaixa,titulo:'Vendeu, mas o dinheiro ainda não entrou',
+      corpo:'Entrou no caixa <strong>'+Math.round(recebido/vendido*100)+'%</strong> do que foi vendido no mês. '+
+            'Faltam <strong>'+fmt(faltaCaixa)+'</strong> em '+qtdCaixa+' venda(s).',
+      decisao:'Vender não é receber. Confira quais são a prazo por decisão da loja e quais são atraso de cliente — e cobre as segundas.',
+      tela:'t-visao'});
+  }
+
+  // 5) pedido de aprovacao esperando a gestao
+  var apr=[],vlrApr=0;
+  (S.orcamentos||[]).forEach(function(o){
+    var a=rvAprov(o);
+    if(a&&a.status==='pendente'){apr.push({o:o,a:a});vlrApr+=_vgNum(o.valor);}
+  });
+  if(apr.length){
+    var mais=apr.map(function(x){return rvHorasDesde(x.a.em)||0;}).sort(function(a,b){return b-a;})[0];
+    A.push({id:'aprovacao',nivel:'alto',dinheiro:vlrApr,titulo:'A equipe está esperando a sua resposta',
+      corpo:'<strong>'+apr.length+' pedido(s) de aprovação</strong> parados com a gestão, somando <strong>'+fmt(vlrApr)+'</strong>.'+
+            (mais>0?(' O mais antigo espera há <strong>'+Math.floor(mais)+'h</strong>.'):''),
+      decisao:'Enquanto não responde, o vendedor não fecha e o cliente procura outro. Responda hoje, mesmo que seja não.',
+      tela:'t-funil-leads'});
+  }
+
+  // 6) pos-venda abaixo do minimo = premio em risco
+  var pvMin=getPvMinPct(),emRisco=[],vlrRisco=0;
+  _lgVendedoresAtivos().forEach(function(n){
+    var idx=calcIndicePosvenda(n);
+    if(idx>=pvMin)return;
+    var P=rvPremio(n,m);
+    if(P&&P.valor>0){emRisco.push({nome:n,idx:idx,valor:P.valor});vlrRisco+=P.valor;}
+  });
+  if(emRisco.length){
+    var qd=emRisco.sort(function(a,b){return b.valor-a.valor;})
+      .map(function(x){return _vgEsc(x.nome)+' ('+x.idx+'%, '+fmt(x.valor)+')';}).join(' · ');
+    A.push({id:'posvenda',nivel:'medio',dinheiro:vlrRisco,titulo:'Prêmio em risco por pós-venda',
+      corpo:'<strong>'+emRisco.length+' vendedor(es)</strong> abaixo do mínimo de '+pvMin+'% de pós-venda completo, com <strong>'+fmt(vlrRisco)+'</strong> de prêmio em risco.<br>'+
+            '<span style="color:var(--muted)">'+qd+'</span>',
+      decisao:'Pós-venda não é burocracia: é foto, avaliação e recompra. Avise cada um do valor que ele perde e dê o prazo até o fim do mês.',
+      tela:'t-vendas-geral'});
+  }
+
+  // 7) vendedor caindo contra a propria media
+  var mesesAnt=_lgMesesComVendido().filter(function(x){return MONTHS.indexOf(x)<MONTHS.indexOf(m);});
+  if(mesesAnt.length>=2&&du.passados>=5){
+    var caindo=[];
+    _lgVendedoresAtivos().forEach(function(n){
+      var soma=0,qt=0;
+      mesesAnt.forEach(function(x){var v=rvVendidoMes(x,n);if(v>0){soma+=v;qt++;}});
+      if(qt<2)return;
+      var media=soma/qt, projV=rvVendidoMes(m,n)/du.passados*du.total;
+      if(media>0&&projV<media*(1-_lgQueda()/100))caindo.push({nome:n,media:media,proj:projV,dif:media-projV});
+    });
+    if(caindo.length){
+      caindo.sort(function(a,b){return b.dif-a.dif;});
+      var c=caindo[0];
+      var tot=caindo.reduce(function(a,x){return a+x.dif;},0);
+      A.push({id:'queda',nivel:'alto',dinheiro:tot,titulo:'Vendedor caindo contra a própria média',
+        corpo:caindo.map(function(x){
+          return '<strong>'+_vgEsc(x.nome)+'</strong>: média de '+fmt(x.media)+', no ritmo de hoje fecha em '+fmt(x.proj)+' (<span style="color:var(--danger)">'+Math.round((1-x.proj/x.media)*100)+'% abaixo</span>)';
+        }).join('<br>'),
+        decisao:'Converse com '+_vgEsc(c.nome)+' esta semana. Queda de mais de um mês raramente é falta de esforço — é carteira, produto ou algo pessoal. Descobrir cedo custa menos que repor a pessoa.',
+        tela:'t-resumo'});
+    }
+  }
+
+  // 8) carteira acima do limite de parados +30 dias
+  var lim=rvMaxParados();
+  if(lim!==null){
+    var acima=[],vlrAcima=0;
+    _lgVendedoresAtivos().forEach(function(n){
+      var meus=(S.orcamentos||[]).filter(function(o){return normStr(o.vendedor)===normStr(n);});
+      var np=rvParados30(meus).length;
+      if(np>lim){var P=rvPremio(n,m);acima.push({nome:n,np:np});vlrAcima+=(P&&P.valor)||0;}
+    });
+    if(acima.length){
+      A.push({id:'carteira',nivel:'medio',dinheiro:vlrAcima,titulo:'Carteira fora do limite',
+        corpo:acima.map(function(x){return '<strong>'+_vgEsc(x.nome)+'</strong>: '+x.np+' orçamentos parados há mais de 30 dias (limite '+lim+')';}).join('<br>'),
+        decisao:'Pela regra do prêmio, isso tira a elegibilidade. Mande limpar a carteira — fechar ou marcar como perdido com motivo — antes do fim do mês.',
+        tela:'t-funil-leads'});
+    }
+  }
+
+  A.sort(function(a,b){
+    if((a.nivel==='alto')!==(b.nivel==='alto'))return a.nivel==='alto'?-1:1;
+    return b.dinheiro-a.dinheiro;
+  });
+  return A;
+}
+
+// ---- o que mudou desde o mes anterior ----
+function rvMudou(){
+  var m=currentMonth, ant=_lgMesAnterior(m);
+  if(!ant)return null;
+  function doMes(x){
+    var vd=rvVendidoMes(x), rc=rvRecebidoMes(x);
+    var pv=rvPorVendedor(x), l=[];
+    Object.keys(pv).forEach(function(n){if(!rvEhSocio(n))l.push(pv[n].total);});
+    l.sort(function(a,b){return b-a;});
+    var qt=rvVendidoDe(x).length;
+    var orcs=(_vgDados(x).orcamentos||[]);
+    var conv=orcs.length?Math.round(orcs.filter(function(o){return String(o.status||'').toLowerCase()==='convertido';}).length/orcs.length*100):0;
+    return {vendido:vd,recebido:rc,ticket:qt?vd/qt:0,conc:(vd>0&&l.length)?Math.round(l[0]/vd*100):0,conv:conv};
+  }
+  var a=doMes(ant), b=doMes(m);
+  return {de:ant,para:m,linhas:[
+    {rot:'Vendido',           ant:a.vendido, atual:b.vendido, tipo:'rs', bom:'cima'},
+    {rot:'Entrou no caixa',   ant:a.recebido,atual:b.recebido,tipo:'rs', bom:'cima'},
+    {rot:'Ticket médio',      ant:a.ticket,  atual:b.ticket,  tipo:'rs', bom:'cima'},
+    {rot:'Conversão',         ant:a.conv,    atual:b.conv,    tipo:'pc', bom:'cima'},
+    {rot:'Concentração no nº 1',ant:a.conc,  atual:b.conc,    tipo:'pc', bom:'baixo'}
+  ]};
+}
+
+// ---- a tela ----
+function renderLeitura(){
+  var box=document.getElementById('lgCorpo');
+  if(!box)return;
+  if(!rvEhAdmin()){box.innerHTML='';return;}
+  var html='';
+
+  // bloco 1: o que mudou
+  var M=rvMudou();
+  if(M){
+    html+='<h3 class="card-title" style="margin:0 0 4px">O que mudou</h3>'+
+      '<div class="vg-sub" style="margin-bottom:12px">'+_vgEsc(MLAB[M.para]||M.para)+' comparado com '+_vgEsc(MLAB[M.de]||M.de)+'</div>'+
+      '<div class="lg-mud">';
+    M.linhas.forEach(function(L){
+      var dif=L.atual-L.ant;
+      var subiu=dif>0.0001, desceu=dif<-0.0001;
+      var bom=(L.bom==='cima')?subiu:desceu;
+      var cor=(!subiu&&!desceu)?'var(--muted)':(bom?'#17795E':'#B4271F');
+      var seta=(!subiu&&!desceu)?'—':(subiu?'▲':'▼');
+      var val=(L.tipo==='rs')?fmtShort(L.atual):(L.atual+'%');
+      var d=(L.tipo==='rs')?fmtShort(Math.abs(dif)):(Math.abs(Math.round(dif))+' p.p.');
+      html+='<div class="lg-mud-i"><span class="lg-mud-r">'+L.rot+'</span>'+
+        '<b>'+val+'</b>'+
+        '<span style="color:'+cor+';font-size:12px;font-weight:600">'+seta+' '+((!subiu&&!desceu)?'igual':d)+'</span></div>';
+    });
+    html+='</div>';
+  }
+
+  // bloco 2: os alertas
+  var A=rvAlertas();
+  html+='<h3 class="card-title" style="margin:22px 0 4px">O que precisa de decisão</h3>';
+  if(!A.length){
+    html+='<div class="alert" style="margin-top:8px">✅ <strong>Nada pendente.</strong> Nenhum alerta aberto com o dado de hoje. Isso é bom sinal, não é a tela quebrada — se quiser conferir, olhe a carteira e o ritmo no painel do mês.</div>';
+  }else{
+    html+='<div class="vg-sub" style="margin-bottom:12px">'+A.length+' ponto(s), do que mais pesa em dinheiro para o que menos pesa.</div>';
+    A.forEach(function(x,i){
+      html+='<div class="lg-al'+(x.nivel==='alto'?' lg-alto':'')+'">'+
+        '<div class="lg-al-top"><span class="lg-al-n">'+(i+1)+'</span>'+
+        '<span class="lg-al-t">'+x.titulo+'</span>'+
+        '<span class="lg-al-rs">'+fmtShort(x.dinheiro)+'</span></div>'+
+        '<div class="lg-al-c">'+x.corpo+'</div>'+
+        '<div class="lg-al-d"><strong>O que fazer:</strong> '+x.decisao+'</div>'+
+        '<button class="btn btn-sm btn-ghost" style="margin-top:10px" onclick="rvAbrirTela(\''+x.tela+'\')">Ver na tela →</button>'+
+        '</div>';
+    });
+  }
+  html+='<p style="margin:20px 0 0;font-size:12px;color:var(--muted)">Esta tela vigia regras, ela não substitui a sua leitura do negócio. '+
+    'O valor ao lado de cada ponto é o dinheiro envolvido, usado só para ordenar o que olhar primeiro.</p>';
+  box.innerHTML=html;
 }
 
 // v49: comparativo VENDIDO x RECEBIDO — numeros, grafico de barras lado a lado e tabela de apoio.
