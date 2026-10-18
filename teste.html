@@ -127,6 +127,34 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px;font-
 .vg-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
 .vg-titulo{font-family:'Archivo','DM Sans',system-ui,sans-serif;font-size:25px;font-weight:700;line-height:1.1;margin:0}
 .vg-sub{font-size:12px;color:var(--vg-sec);margin-top:4px}
+/* v55 — extrato transparente */
+.ex-regra{background:#E6F4F3;border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.ex-tit{font-size:13px;font-weight:700;color:#07514E;margin-bottom:8px}
+.ex-ol{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6;color:#141413}
+.ex-ol li{margin-bottom:6px}
+.ex-nota{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.ex-bloco{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.ex-escada{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.ex-deg{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;font-size:13px;flex-wrap:wrap}
+.ex-deg-eu{background:#FDF0E6;box-shadow:inset 0 0 0 1.5px #A04F00}
+.ex-deg-m{color:#17795E;font-weight:700;width:14px;flex:0 0 14px}
+.ex-deg-n{font-weight:600;flex:1 1 90px;min-width:0}
+.ex-deg-v{color:var(--muted);font-size:12px;flex:0 0 auto}
+.ex-deg-p{font-weight:700;width:52px;text-align:right;flex:0 0 52px}
+.ex-deg-aq{font-size:11px;font-weight:700;color:#A04F00;background:#fff;border-radius:20px;padding:2px 8px;flex:0 0 auto}
+.ex-prox{font-size:13px;color:#141413;margin-top:10px;line-height:1.5}
+.ex-conta{display:flex;flex-direction:column;gap:1px;margin-top:6px}
+.ex-cl{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:13.5px}
+.ex-cl b{font-weight:700;white-space:nowrap}
+.ex-cl-sub{background:transparent;padding-top:2px;padding-bottom:6px;font-size:12px;color:var(--muted)}
+.ex-cl-eq{background:#E6F4F3;font-weight:600}
+.ex-cl-eq b{color:#07514E;font-size:16px}
+/* v55 — Ligar hoje com paginacao */
+.lg-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:14px 0 2px;flex-wrap:wrap}
+.lg-cab-t{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+.lg-cab-q{font-size:11px;color:var(--muted)}
+.lg-mais{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:620px){.ex-deg{font-size:12.5px}.ex-deg-v{flex:1 1 100%;order:3}}
 /* v54 — Leitura da gestao */
 .lg-mud{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .lg-mud-i{background:var(--vg-fundo);border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:2px}
@@ -4790,6 +4818,36 @@ function lgAtualizar(id){
   if(!o){alert('Esse orçamento é de outro mês. Escolha o mês atual no topo da tela para atualizar.');return;}
   openOrcVendModal(id);
 }
+// v55: "Ligar hoje" mostrava 434 no selo e so 15 na lista, sem como ver o resto.
+// Agora cada bloco diz quantos estao aparecendo de quantos, e abre de 25 em 25.
+var _lgVer={orc:15,sum:15};
+function lgVerMais(qual){
+  _lgVer[qual]=(_lgVer[qual]||15)+25;
+  renderLigarHoje();
+  var el=document.getElementById('lgMais_'+qual);
+  if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});
+}
+function lgVerMenos(qual){
+  _lgVer[qual]=15;
+  renderLigarHoje();
+  var t=document.getElementById('lgLista');
+  if(t&&t.scrollIntoView)t.scrollIntoView({block:'start'});
+}
+function _lgCabec(titulo,mostrando,total){
+  return '<div class="lg-cab"><span class="lg-cab-t">'+titulo+'</span>'+
+    '<span class="lg-cab-q">'+(total>mostrando?('mostrando '+mostrando+' de '+total):(total+(total===1?' item':' itens')))+'</span></div>';
+}
+function _lgRodape(qual,mostrando,total){
+  if(total<=mostrando){
+    return (mostrando>15)?('<div class="lg-mais" id="lgMais_'+qual+'"><button type="button" class="btn btn-sm btn-ghost" onclick="lgVerMenos(\''+qual+'\')">Mostrar menos</button></div>'):'';
+  }
+  var falta=total-mostrando, lote=Math.min(25,falta);
+  return '<div class="lg-mais" id="lgMais_'+qual+'">'+
+    '<button type="button" class="btn btn-sm btn-ghost" onclick="lgVerMais(\''+qual+'\')">Ver mais '+lote+' (faltam '+falta+')</button>'+
+    (mostrando>15?' <button type="button" class="btn btn-sm btn-ghost" onclick="lgVerMenos(\''+qual+'\')">Mostrar menos</button>':'')+
+    '</div>';
+}
+
 function renderLigarHoje(){
   var alvo=document.getElementById('lgLista');
   if(!alvo||!me)return;
@@ -4821,18 +4879,20 @@ function renderLigarHoje(){
 
   var html='';
   if(orcs.length){
-    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:4px 0 2px">Orçamentos para retornar</div>'+
-      orcs.slice(0,15).map(function(o){
+    var _nO=Math.min(_lgVer.orc,orcs.length);
+    html+=_lgCabec('Orçamentos para retornar',_nO,orcs.length)+
+      orcs.slice(0,_nO).map(function(o){
         var det=o.ret.st==='atrasado'?('Retorno marcado para '+fmtDataBR(o.ret.data)+' e não feito'):(o.ret.st==='hoje'?'Retorno marcado para hoje':('Sem retorno marcado — orçado há '+((o.dias===null)?'?':o.dias)+' dias'));
         var pend=(o.apTxt&&!/^🕓/.test(o.apTxt)?(' · '+o.apTxt):'')+(o.ag?(' · Esperando: '+(AGUARD_LABEL[o.ag]||o.ag)):'')+(o.obs?(' · '+o.obs):''); // v44/v45
         return linha(o.cliente,(o.num?('Orçamento '+o.num+' — '):'')+det+pend,o.dias,o.valor,o.id,o.ret);
-      }).join('');
+      }).join('')+_lgRodape('orc',_nO,orcs.length);
   }
   if(sumidos.length){
-    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:14px 0 2px">Comprou e parou de voltar</div>'+
-      sumidos.slice(0,15).map(function(c){
+    var _nS=Math.min(_lgVer.sum,sumidos.length);
+    html+=_lgCabec('Comprou e parou de voltar',_nS,sumidos.length)+
+      sumidos.slice(0,_nS).map(function(c){
         return linha(c.nome,c.compras+' compra(s) — última em '+fmtDataBR(c.ultima),c.dias,c.total);
-      }).join('');
+      }).join('')+_lgRodape('sum',_nS,sumidos.length);
   }
   if(!html)html='<div style="padding:14px 0;color:var(--muted);font-size:13px">Nenhuma pendência de contato. Todo orçamento aberto tem retorno marcado e nenhum cliente seu está há mais de 30 dias sem comprar.</div>';
   else html+='<div style="font-size:11px;color:var(--muted);margin-top:10px">Clique em Atualizar e marque a data do próximo contato: o orçamento some daqui até o dia marcado. Se a data passar, ele volta vermelho.</div>';
@@ -5323,6 +5383,58 @@ function rvAReceber(nome){
 }
 function _rvMesCurto(m){var p=String(m||'').split('_');return String(MLAB[m]||p[0]).split(' ')[0].slice(0,3).toLowerCase()+'/'+String(p[1]||'').slice(2);}
 // ---- vendedor: extrato da premiacao (so os numeros dele) ----
+// v55: extrato da premiacao escrito para nao deixar margem de duvida.
+// Mostra a REGRA por extenso, a ESCADA das faixas com a posicao do vendedor,
+// a CONTA passo a passo e o DESTINO do que ainda nao entrou.
+function _exEscada(base){
+  var fx=getFaixasAtivas();
+  if(!fx.length)return '';
+  var atual=calcFaixa(base);
+  var linhas=fx.map(function(f){
+    var eu=atual&&f.min===atual.min;
+    var passou=base>=f.min;
+    return '<div class="ex-deg'+(eu?' ex-deg-eu':'')+'">'+
+      '<span class="ex-deg-m">'+(passou?'✔':'&nbsp;&nbsp;')+'</span>'+
+      '<span class="ex-deg-n">'+_vgEsc(f.nome)+'</span>'+
+      '<span class="ex-deg-v">a partir de '+fmtShort(f.min)+'</span>'+
+      '<span class="ex-deg-p">'+rvPctFaixa(f.pct)+'</span>'+
+      (eu?'<span class="ex-deg-aq">você está aqui</span>':'')+'</div>';
+  }).join('');
+  var prox=null;
+  for(var i=0;i<fx.length;i++){if(fx[i].min>base){prox=fx[i];break;}}
+  var rodape=prox
+    ? ('<div class="ex-prox">Faltam <strong>'+fmt(prox.min-base)+'</strong> de venda para chegar na faixa <strong>'+_vgEsc(prox.nome)+'</strong> ('+rvPctFaixa(prox.pct)+').</div>')
+    : (atual?'<div class="ex-prox">Você está na faixa máxima da tabela.</div>':'');
+  return '<div class="ex-bloco"><div class="ex-tit">A escada das faixas</div>'+
+    '<div class="ex-escada">'+linhas+'</div>'+rodape+'</div>';
+}
+function _exRegra(){
+  return '<div class="ex-regra">'+
+    '<div class="ex-tit">Como o seu prêmio é calculado</div>'+
+    '<ol class="ex-ol">'+
+    '<li><strong>A sua faixa sai do que você VENDEU no mês.</strong> É o que depende de você: fechar a venda. No dia em que você fecha, já sabe qual faixa conquistou.</li>'+
+    '<li><strong>O pagamento sai do que ENTROU no caixa no mês.</strong> A loja só paga sobre dinheiro que recebeu de verdade.</li>'+
+    '<li><strong>O que ainda não entrou não se perde.</strong> Quando o cliente pagar, aquele valor vira prêmio no mês do pagamento, pela faixa daquele mês.</li>'+
+    '</ol>'+
+    '<div class="ex-nota">Nenhuma venda é paga duas vezes, e nenhuma venda deixa de ser paga. O que muda é só o mês em que o prêmio cai.</div>'+
+    '</div>';
+}
+function _exConta(p){
+  if(!p.faixa||!(p.recebido>0)){
+    return '<div class="ex-bloco"><div class="ex-tit">A conta deste mês</div>'+
+      '<div class="ex-nota">'+(p.faixa?'Ainda não entrou dinheiro das suas vendas neste mês, então ainda não há prêmio a calcular.':'Você ainda não atingiu a primeira faixa com o vendido deste mês.')+'</div></div>';
+  }
+  return '<div class="ex-bloco"><div class="ex-tit">A conta deste mês, passo a passo</div>'+
+    '<div class="ex-conta">'+
+      '<div class="ex-cl"><span>1. Vendi no mês</span><b>'+fmt(p.base)+'</b></div>'+
+      '<div class="ex-cl ex-cl-sub"><span>isso me coloca na faixa</span><b>'+_vgEsc(p.faixa.nome)+' · '+rvPctFaixa(p.faixa.pct)+'</b></div>'+
+      '<div class="ex-cl"><span>2. Entrou no caixa no mês</span><b>'+fmt(p.recebido)+'</b></div>'+
+      '<div class="ex-cl ex-cl-eq"><span>3. '+rvPctFaixa(p.faixa.pct)+' de '+fmt(p.recebido)+'</span><b>'+fmt(p.valor)+'</b></div>'+
+    '</div>'+
+    '<div class="ex-nota">Este valor ainda depende das regras de pós-venda e de carteira — se você estiver em dia nas duas, ele é o seu prêmio.</div>'+
+    '</div>';
+}
+
 function rvVendExtrato(){
   var card=document.getElementById('vdExtratoCard'),el=document.getElementById('vdExtrato');if(!card||!el)return;
   card.style.display='';
@@ -5332,15 +5444,17 @@ function rvVendExtrato(){
   var lin=function(rot,val,sub,cor){return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:13px;color:var(--mid)">'+rot+(sub?'<div style="font-size:11px;color:var(--muted)">'+sub+'</div>':'')+'</div><div style="font-size:18px;font-weight:700;white-space:nowrap;color:'+(cor||'var(--text)')+'">'+val+'</div></div>';};
   var h='';
   if(p.temVendido){
-    h+=lin('Vendi no mês',fmt(p.base),'é o que define a sua faixa'+(p.faixa?(': '+p.faixa.nome+' ('+rvPctFaixa(p.faixa.pct)+')'):''));
-    h+=lin('Entrou no mês',fmt(p.recebido),'é sobre isso que o percentual é pago');
+    h+=_exRegra();
+    h+=lin('Vendi no mês',fmt(p.base),'é o que define a minha faixa'+(p.faixa?(': '+p.faixa.nome+' ('+rvPctFaixa(p.faixa.pct)+')'):' — ainda não atingi a primeira'));
+    h+=lin('Entrou no caixa no mês',fmt(p.recebido),'é sobre este valor que o percentual é pago');
   }else{
     h+=lin('Entrou no mês',fmt(p.recebido),'o relatório de vendas realizadas deste mês ainda não foi lançado — por enquanto a faixa é medida pelo que entrou');
   }
   h+=lin('Premiação prevista',fmt(p.valor),p.faixa?(rvPctFaixa(p.faixa.pct)+' × '+fmt(p.recebido)+' · sujeita às regras de pós-venda e carteira'):'ainda sem faixa de premiação','var(--teal)');
-  h+=lin('Falta entrar das suas vendas',fmt(ar.total),ar.lista.length?(ar.lista.length+' venda'+(ar.lista.length===1?'':'s')+' — vira premiação no mês em que o cliente pagar'):'tudo o que você vendeu já entrou','var(--orange)');
+  h+=lin('Falta entrar das suas vendas',fmt(ar.total),ar.lista.length?(ar.lista.length+' venda'+(ar.lista.length===1?'':'s')+' — não se perde: vira premiação no mês em que o cliente pagar'):'tudo o que você vendeu já entrou','var(--orange)');
+  if(p.temVendido){ h+=_exConta(p); h+=_exEscada(p.base); }
   if(ar.lista.length){
-    h+='<div style="font-size:12px;color:var(--muted);margin:12px 0 6px">O.S. com dinheiro a entrar (acompanhe com o cliente):</div><div class="tbl-wrap"><table><thead><tr><th>O.S.</th><th>Cliente</th><th>Venda</th><th>Já entrou</th><th>Falta</th></tr></thead><tbody>'+
+    h+='<div style="font-size:12px;color:var(--muted);margin:16px 0 6px">O.S. com dinheiro a entrar (acompanhe com o cliente):</div><div class="tbl-wrap"><table><thead><tr><th>O.S.</th><th>Cliente</th><th>Venda</th><th>Já entrou</th><th>Falta</th></tr></thead><tbody>'+
       ar.lista.slice(0,40).map(function(x){return '<tr><td><code>'+_vgEsc(x.os)+'</code> <span class="badge b-gray" style="font-size:10px">'+_rvMesCurto(x.mes)+'</span></td><td>'+_vgEsc(x.cliente)+'</td><td>'+fmt(x.vendido)+'</td><td>'+fmt(x.recebido)+'</td><td style="font-weight:700;color:var(--orange)">'+fmt(x.falta)+'</td></tr>';}).join('')+'</tbody></table></div>';
   }
   el.innerHTML=h;
