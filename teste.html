@@ -352,6 +352,59 @@ body.rv-lateral #rvSub{display:flex}
   #rvSub{padding:12px 16px 0;overflow-x:auto;flex-wrap:nowrap}
   .rv-sub-bt{white-space:nowrap}
 }
+/* ===== v58 — Gestão à vista ===== */
+#t-avista .av-card{background:#fff;border:1px solid var(--rv-linha);border-radius:12px;padding:16px;margin-bottom:14px}
+#t-avista .av-grade2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.av-tit{font-family:'Archivo','DM Sans',system-ui,sans-serif;font-size:16px;font-weight:700;color:#141413;margin-bottom:2px}
+.av-sub2{font-size:12px;color:#5C5A55;margin-bottom:12px;line-height:1.5}
+.av-lbl{font-size:11px;font-weight:600;color:#5C5A55;text-transform:uppercase;letter-spacing:.4px}
+.av-num{font-family:'Archivo','DM Sans',system-ui,sans-serif;font-size:24px;font-weight:700;color:#141413;line-height:1.15;margin-top:3px}
+.av-sub{font-size:11px;color:#8A867E;margin-top:2px;line-height:1.4}
+.av-mudo{color:#8A867E}
+.av-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-content:center}
+.av-vazio{font-size:13px;color:#8A867E;padding:18px 0;text-align:center}
+.av-nota{font-size:11px;color:#5C5A55;margin-top:8px;line-height:1.5}
+.av-tracinho{display:inline-block;width:14px;border-top:1px dashed #5C5A55;vertical-align:middle;margin-right:4px}
+/* termometro */
+.av-termo-topo{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.av-pct{font-family:'Archivo','DM Sans',system-ui,sans-serif;font-size:26px;font-weight:700;line-height:1}
+.av-trilho{position:relative;height:14px;background:#EFEDE7;border-radius:999px;overflow:visible}
+.av-preenche{height:14px;border-radius:999px;transition:width .35s ease}
+.av-marca{position:absolute;top:-4px;width:2px;height:22px;background:#141413;border-radius:1px}
+.av-marca:after{content:'';position:absolute;left:-3px;top:-4px;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #141413}
+.av-termo-pes{display:flex;justify-content:space-between;font-size:12px;color:#5C5A55;margin-top:8px}
+/* barras deitadas */
+.av-bh-l{display:grid;grid-template-columns:minmax(96px,1.25fr) 2.6fr minmax(74px,auto);gap:10px;align-items:center;padding:5px 0}
+.av-bh-n{font-size:12.5px;color:#141413;font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.av-ponto{width:9px;height:9px;border-radius:3px;flex:none}
+.av-bh-t{background:#F3F1EC;border-radius:5px;height:17px;overflow:hidden}
+.av-bh-b{height:17px;border-radius:0 5px 5px 0;transition:width .35s ease}
+.av-bh-v{font-size:12.5px;font-weight:700;color:#141413;text-align:right;white-space:nowrap}
+.av-bh-nota{font-size:11px;margin:0 0 7px 15px}
+.av-falta{color:#A04F00}
+.av-falta.av-top{color:#17795E}
+/* svg */
+.av-svg{width:100%;height:auto;display:block}
+.av-rolax{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.av-leg{display:flex;gap:16px;font-size:12px;color:#5C5A55;margin-bottom:8px;flex-wrap:wrap}
+.av-leg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+/* anel */
+.av-anel{width:84px;height:84px;flex:none}
+.av-anel-c{display:flex;gap:14px;align-items:center}
+.av-anel-t{min-width:0}
+.av-anel-s{font-size:11.5px;color:#5C5A55;margin-top:5px;line-height:1.5}
+/* celular de verdade */
+@media(max-width:760px){
+  #t-avista .av-grade2{grid-template-columns:1fr}
+  .av-nums{grid-template-columns:1fr 1fr}
+  .av-bh-l{grid-template-columns:minmax(70px,1fr) 1.6fr minmax(62px,auto);gap:7px}
+  .av-bh-n{font-size:11.5px}
+  .av-bh-v{font-size:11.5px}
+  .av-pct{font-size:22px}
+  .av-num{font-size:20px}
+  .av-bh-nota{margin-left:0;font-size:10.5px}
+}
+
 </style>
 </head>
 <body onload="rvPintarLogos()">
@@ -525,6 +578,16 @@ body.rv-lateral #rvSub{display:flex}
     </div>
     <div class="card"><div id="lgCorpo"></div></div>
   </div>
+  <div id="t-avista" class="tab-pane">
+    <div class="vg-topo">
+      <div>
+        <h2 class="vg-titulo">Gestão à vista</h2>
+        <div class="vg-sub" id="avSub">—</div>
+      </div>
+    </div>
+    <div id="avCorpo"></div>
+  </div>
+
   <div id="t-visao" class="tab-pane">
     <div class="vg-topo">
       <div>
@@ -1199,6 +1262,7 @@ body.rv-lateral #rvSub{display:flex}
       <div id="vdCartDica" style="font-size:12px;color:var(--muted);margin-top:10px"></div>
       <div id="vdRegraPremio" style="display:none;margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px"></div>
     </div>
+    <div id="vdAVista"></div>
     <div class="big-meta">
       <div class="big-card big-card-teal">
         <div class="big-card-lbl">💰 Minhas Vendas (Mês)</div>
@@ -2654,7 +2718,7 @@ function renderVendDashboard(){
   document.getElementById('vd-orccount').textContent=myOrcAbertos.length;
   document.getElementById('vd-convcount').textContent=myOrcConv.length;
   document.getElementById('vd-perdcount').textContent=myOrcs.filter(o=>_doMes(o)&&o.status==='perdido').length;
-  const _myCoorte=myOrcs.filter(_doMes);const orcTotV=_myCoorte.length,orcConvV=_myCoorte.filter(o=>o.status==='convertido').length;const txElV=document.getElementById('vd-txconv');if(txElV)txElV.textContent=orcTotV>0?Math.round(orcConvV/orcTotV*100)+'%':'—';const pvAberto=my.filter(v=>Number(v.valor)>0&&(!S.posvenda[osBase(v.os)]||!(S.posvenda[osBase(v.os)].fotoStatus==='coletada'&&S.posvenda[osBase(v.os)].avalStatus==='coletada'&&S.posvenda[osBase(v.os)].follow30==='realizado'))).length;const pvEl=document.getElementById('vd-pvaberto');if(pvEl)pvEl.textContent=pvAberto;const pvIdx=calcIndicePosvenda(me.name);const pvMin=getPvMinPct();const pvIdxEl=document.getElementById('vd-pvidx');const pvIdxSub=document.getElementById('vd-pvidx-sub');if(pvIdxEl){pvIdxEl.textContent=pvIdx+'%';pvIdxEl.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}if(pvIdxSub){pvIdxSub.textContent=pvIdx>=pvMin?'✅ Elegível':'⚠️ Mín: '+pvMin+'% | Atual: '+pvIdx+'%';pvIdxSub.style.color=pvIdx>=pvMin?'var(--success)':'var(--danger)';}
+  const _myCoorte=myOrcs.filter(_doMes);const orcTotV=_myCoorte.length,orcConvV=_myCoorte.filter(o=>o.status==='convertido').length;const txElV=document.getElementById('vd-txconv');if(txElV)txElV.textContent=orcTotV>0?Math.round(orcConvV/orcTotV*100)+'%':'—';const pvAberto=my.filter(v=>Number(v.valor)>0&&(!S.posvenda[osBase(v.os)]||!(S.posvenda[osBase(v.os)].fotoStatus==='coletada'&&S.posvenda[osBase(v.os)].avalStatus==='coletada'&&S.posvenda[osBase(v.os)].follow30==='realizado'))).length;const pvEl=document.getElementById('vd-pvaberto');if(pvEl)pvEl.textContent=pvAberto;const pvIdx=calcIndicePosvenda(me.name);const pvMin=getPvMinPct();const _pvSem=(pvIdx===null);const pvIdxEl=document.getElementById('vd-pvidx');const pvIdxSub=document.getElementById('vd-pvidx-sub');if(pvIdxEl){pvIdxEl.textContent=_pvSem?'—':(pvIdx+'%');pvIdxEl.style.color=_pvSem?'var(--muted)':(pvIdx>=pvMin?'var(--success)':'var(--danger)');}if(pvIdxSub){pvIdxSub.textContent=_pvSem?'sem venda registrada ainda':(pvIdx>=pvMin?'✅ Elegível':'⚠️ Mín: '+pvMin+'% | Atual: '+pvIdx+'%');pvIdxSub.style.color=_pvSem?'var(--muted)':(pvIdx>=pvMin?'var(--success)':'var(--danger)');}
   // COFRE: o vendedor NUNCA vê a meta da loja nem o nº de vendedores (senão deduz o faturamento total).
   // O alvo dele é a PRÓXIMA FAIXA de premiação — meta 100% individual.
   const _faixasV=getFaixasAtivas();
@@ -2883,13 +2947,15 @@ function rvLinhasPremiacao(){
   const linhas=Object.keys(nomes).map(function(nome){
     const P=rvPremio(nome,currentMonth);
     const q=(base[nome]&&base[nome].qtd)||0;
-    const pvIdx=calcIndicePosvenda(nome),pvMin=getPvMinPct(),pvOk=pvIdx>=pvMin;
+    const pvIdx=calcIndicePosvenda(nome),pvMin=getPvMinPct();
+    const pvSemVenda=(pvIdx===null);
+    const pvOk=pvSemVenda?true:(pvIdx>=pvMin); // sem venda nao e "abaixo do minimo": nao ha o que medir
     const pvBonus=calcBonusPosvenda(nome,currentMonth);
     const _lim=rvMaxParados();const _np=_lim===null?0:rvParados30((S.orcamentos||[]).filter(function(o){return normStr(o.vendedor)===normStr(nome);})).length;const cartOk=(_lim===null||_np<=_lim);
     const bonusCol=(metaOk&&!P.socio)?getBonusColetivo():0;
     const bonifVal=P.socio?0:(bnMap[nome]||0);
     const pvBonusValor=P.socio?0:pvBonus*((G.config&&G.config.pvBonusUnit)||0);
-    return {nome:nome,qtd:q,P:P,pvIdx:pvIdx,pvMin:pvMin,pvOk:pvOk,pvBonus:pvBonus,pvBonusValor:pvBonusValor,np:_np,lim:_lim,cartOk:cartOk,bonusCol:bonusCol,bonifVal:bonifVal,
+    return {nome:nome,qtd:q,P:P,pvIdx:pvIdx,pvMin:pvMin,pvOk:pvOk,pvSemVenda:pvSemVenda,pvBonus:pvBonus,pvBonusValor:pvBonusValor,np:_np,lim:_lim,cartOk:cartOk,bonusCol:bonusCol,bonifVal:bonifVal,
       total:P.valor+bonusCol+bonifVal};
   }).sort(function(a,b){return b.P.base-a.P.base;});
   return {linhas:linhas,totalLoja:totalLoja,metaOk:metaOk};
@@ -2911,12 +2977,14 @@ function renderRelatorio(){
   let totalPremios=0;
   R.linhas.forEach(function(L){
     const f=L.P.faixa;
-    const pvCell='<span style="font-weight:700;color:'+(L.pvOk?'var(--success)':'var(--danger)')+'">'+L.pvIdx+'%</span><br><small style="color:var(--muted)">'+(L.pvOk?'✅ Elegível':'⚠️ '+L.pvIdx+'%/'+L.pvMin+'% mín.')+'</small>';
+    const pvCell=L.pvSemVenda
+        ?'<span style="font-weight:700;color:var(--muted)">—</span><br><small style="color:var(--muted)">sem venda registrada</small>'
+      :('<span style="font-weight:700;color:'+(L.pvOk?'var(--success)':'var(--danger)')+'">'+L.pvIdx+'%</span><br><small style="color:var(--muted)">'+(L.pvOk?'✅ Elegível':'⚠️ '+L.pvIdx+'%/'+L.pvMin+'% mín.')+'</small>');
     const okTot=L.pvOk&&L.cartOk;
     if(!L.P.socio)totalPremios+=L.total;
     html+='<tr style="'+(f?'':'color:var(--muted)')+'">'+
       '<td><strong>'+_vgEsc(L.nome)+'</strong>'+(L.P.socio?'<br><small style="color:var(--orange)">sócio — sem pagamento</small>':'')+
-        (!L.pvOk&&!L.P.socio?'<br><small style="color:var(--danger)">⚠️ Pós-venda abaixo do mínimo</small>':'')+
+        (!L.pvOk&&!L.pvSemVenda&&!L.P.socio?'<br><small style="color:var(--danger)">⚠️ Pós-venda abaixo do mínimo</small>':'')+
         (!L.cartOk&&!L.P.socio?'<br><small style="color:var(--danger)">⚠️ Carteira: '+L.np+' parados (limite '+L.lim+')</small>':'')+'</td>'+
       '<td>'+L.qtd+'</td>'+
       '<td><strong>'+fmt(L.P.base)+'</strong></td>'+
@@ -3029,7 +3097,10 @@ function calcIndicePosvenda(nomeVendedor){
       return p.fotoStatus==='coletada'&&p.avalStatus==='coletada'&&p.follow30==='realizado';
     }).length;
   });
-  return totalVendas>0?Math.round(totalCompletos/totalVendas*100):100;
+  // v56: sem venda nenhuma nao existe indice. Devolver 100 aqui pintava de verde
+  // quem nunca vendeu e, pior, pintava TODOS de verde enquanto os dados nao carregavam.
+  if(totalVendas<=0)return null;
+  return Math.round(totalCompletos/totalVendas*100);
 }
 
 function calcBonusPosvenda(nomeVendedor,mes){
@@ -3059,10 +3130,10 @@ function mesNumero(nome){
 function renderAll(){
   try{populateSelects();}catch(e){console.warn('populateSelects:',e);}
   if(rvEhGestao()){
-    const fns=[renderLeitura,vgPrepararSelects,renderVisao,clPrepararSelect,renderClientes,renderPerdas,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
+    const fns=[renderAVista,renderLeitura,vgPrepararSelects,renderVisao,clPrepararSelect,renderClientes,renderPerdas,renderRelatorio,renderConfig,renderDash,renderResumo,renderFunil,renderVendasList,renderVendedores,renderForns,renderPedidos,renderPV,renderProfs,renderRT,renderBonif,renderEntregasPendentes];
     fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name+' erro:',e);}});
   }else{
-    const fns=[renderVendDashboard,renderLigarHoje,renderVendVendas,renderVendOrcs,renderVendPedidos,renderVendPV,renderVendBonif];
+    const fns=[renderVendDashboard,renderAVistaVend,renderLigarHoje,renderVendVendas,renderVendOrcs,renderVendPedidos,renderVendPV,renderVendBonif];
     fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name+' erro:',e);}});
   }
 }
@@ -3075,7 +3146,10 @@ function fmtShort(v){v=Number(v||0);if(v>=1000000)return'R$ '+(v/1000000).toLoca
 function renderDash(){
   const _temV=rvTemVendido(currentMonth); // v46: vendido quando o mes tiver o relatorio de Vendas Realizadas
   const total=rvBaseFaixa(currentMonth);
-  const prog=Math.min(100,(total/S.meta*100));
+  // v56: meta zerada dava "NaN% da meta" na tela (0 dividido por 0) e 100% quando havia venda.
+  const _metaD=Number(S.meta)||0;
+  const _semMeta=(_metaD<=0);
+  const prog=_semMeta?0:Math.min(100,(total/_metaD*100));
   const qtd=_temV?rvQtdVendido(currentMonth):S.vendas.length;
   const orcAbertos=S.orcamentos.filter(o=>o.status==='aberto'||o.status==='negociacao').length;
   const pvPend=S.vendas.filter(v=>Number(v.valor)>0&&(!S.posvenda[osBase(v.os)]||S.posvenda[osBase(v.os)].follow30!=='realizado')).length;
@@ -3115,9 +3189,9 @@ function renderDash(){
   document.getElementById('d-bnpend').textContent=fmt(bnTotal-bnPago);
   document.getElementById('d-bntotal').textContent='de '+fmt(bnTotal)+' total';
   document.getElementById('d-realizado').textContent=fmtShort(total);
-  document.getElementById('d-realizado-sub').textContent=prog.toFixed(1)+'% da meta';
+  document.getElementById('d-realizado-sub').textContent=_semMeta?'meta do mês não definida':(prog.toFixed(1)+'% da meta');
   document.getElementById('metaInput').value=S.meta;
-  document.getElementById('progLabel').textContent=prog.toFixed(1)+'%';
+  document.getElementById('progLabel').textContent=_semMeta?'—':(prog.toFixed(1)+'%');
   document.getElementById('progValues').textContent=`${fmt(total)} / ${fmt(S.meta)}`;
   document.getElementById('progFill').style.width=prog+'%';
   // FAROL
@@ -5000,7 +5074,7 @@ function renderClientes(){
 // entao todo comportamento que ja existia continua valendo.
 var RV_SECOES=[
   {id:'visao', nome:'Visão geral', ico:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
-   telas:[['t-leitura','Leitura da gestão'],['t-visao','Resumo do mês']]},
+   telas:[['t-avista','Gestão à vista'],['t-leitura','Leitura da gestão'],['t-visao','Resumo do mês']]},
   {id:'vendas', nome:'Vendas', ico:'<path d="m3 17 6-6 4 4 7-7"/><path d="M15 8h5v5"/>',
    telas:[['t-dash','Painel do mês'],['t-resumo','Resumo anual'],['t-clientes','Clientes'],['t-vendas-geral','Vendas e pós-venda'],['t-funil-leads','Orçamentos']]},
   {id:'entregas', nome:'Entregas', ico:'<path d="M3 7h10v9H3z"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
@@ -5017,7 +5091,7 @@ var _rvSecAtual='visao';
 // Regra de ouro: o gerente cuida de gente e de venda; a sócia cuida do dinheiro.
 // Ele enxerga a equipe inteira com números (não é cofre de vendedor), mas não toca no que é pagamento,
 // regra de premiação, usuário ou importação do faturamento.
-var RV_TELAS_GERENTE=['t-visao','t-dash','t-resumo','t-clientes','t-vendas-geral','t-funil-leads','t-entregas-pend','t-pedidos','t-fornecedores','t-bonificacoes','t-export'];
+var RV_TELAS_GERENTE=['t-avista','t-visao','t-dash','t-resumo','t-clientes','t-vendas-geral','t-funil-leads','t-entregas-pend','t-pedidos','t-fornecedores','t-bonificacoes','t-export'];
 var RV_PERM={
   admin:  {gestao:true, config:true, usuarios:true, importar:true, rt:true, pagarFornecedor:true, editarBonificacao:true, apagarEmMassa:true, editarFornecedor:true},
   gerente:{gestao:true, config:false,usuarios:false,importar:false,rt:false,pagarFornecedor:false,editarBonificacao:false,apagarEmMassa:false,editarFornecedor:false}
@@ -5876,6 +5950,7 @@ function rvAlertas(){
   var pvMin=getPvMinPct(),emRisco=[],vlrRisco=0;
   _lgVendedoresAtivos().forEach(function(n){
     var idx=calcIndicePosvenda(n);
+    if(idx===null)return; // sem venda nenhuma: nao ha indice para cobrar
     if(idx>=pvMin)return;
     var P=rvPremio(n,m);
     if(P&&P.valor>0){emRisco.push({nome:n,idx:idx,valor:P.valor});vlrRisco+=P.valor;}
@@ -6423,6 +6498,383 @@ function populateSelects(){
 // [NUVEM] Listener de storage removido — dados compartilhados via Google Sheets (getAll).
 // Para atualizar manualmente, use o botão 🔄 no cabeçalho.
 window.addEventListener('load',()=>{const today=hojeISO();['oData','mvData'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});});
+/* ===================== v58 — GESTÃO À VISTA: motor de gráficos =====================
+   SVG puro, sem biblioteca, sem crase, sem encadeamento opcional — roda em iPhone, Android e computador.
+   Paleta conferida no validador: banda de luminosidade, saturação mínima,
+   separação para daltonismo (ΔE 9.7 deutan) e contraste >= 3:1 no fundo claro. */
+var RV_PAL=['#009389','#EA580C','#2563EB','#A21CAF','#65A30D','#9333EA'];
+var RV_COR_OK='#17795E', RV_COR_AT='#A04F00', RV_COR_RUIM='#B4271F';
+var RV_TINTA='#141413', RV_SEC='#5C5A55', RV_LINHA='#E2DED5', RV_MUDO='#8A867E';
+
+/* cor presa à PESSOA, nunca à posição no ranking: filtrar não repinta ninguém */
+var _rvCorMapa={}, _rvCorN=0;
+function rvCorDe(nome){
+  var k=normStr(nome||'');
+  if(!k)return RV_MUDO;
+  if(_rvCorMapa[k]===undefined){_rvCorMapa[k]=_rvCorN%RV_PAL.length;_rvCorN++;}
+  return RV_PAL[_rvCorMapa[k]];
+}
+function rvCorFixar(nomes){
+  // ordena uma vez por nome para a cor de cada pessoa não mudar entre telas
+  (nomes||[]).slice().sort(function(a,b){return String(a).localeCompare(String(b),'pt');})
+    .forEach(function(n){rvCorDe(n);});
+}
+function _gEsc(s){return _vgEsc(String(s===undefined||s===null?'':s));}
+function _gId(){return 'g'+Math.random().toString(36).slice(2,9);}
+
+/* ---------- dica que aparece ao passar o dedo/mouse ---------- */
+function rvDicaMontar(){
+  if(document.getElementById('rvDica'))return;
+  var d=document.createElement('div');
+  d.id='rvDica';
+  d.setAttribute('role','tooltip');
+  d.style.cssText='position:fixed;z-index:9999;display:none;pointer-events:none;background:#141413;color:#fff;'+
+    'padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.45;max-width:240px;box-shadow:0 4px 14px rgba(0,0,0,.25)';
+  document.body.appendChild(d);
+}
+function rvDica(ev,html){
+  rvDicaMontar();
+  var d=document.getElementById('rvDica');
+  if(!html){d.style.display='none';return;}
+  d.innerHTML=html;
+  d.style.display='block';
+  var x=ev.clientX+14, y=ev.clientY+14, w=d.offsetWidth, h=d.offsetHeight;
+  if(x+w>window.innerWidth-8)x=window.innerWidth-w-8;
+  if(y+h>window.innerHeight-8)y=ev.clientY-h-12;
+  if(y<8)y=8;
+  d.style.left=x+'px'; d.style.top=y+'px';
+}
+function rvDicaSair(){var d=document.getElementById('rvDica');if(d)d.style.display='none';}
+
+/* ---------- 1) TERMÔMETRO: onde estou x onde eu deveria estar hoje ---------- */
+function rvGTermo(o){
+  var val=Number(o.valor)||0, meta=Number(o.meta)||0;
+  var semMeta=(meta<=0);
+  var pct=semMeta?0:Math.min(100,val/meta*100);
+  var ritmo=Math.max(0,Math.min(100,Number(o.ritmoPct)||0)); // onde o relógio diz que eu deveria estar
+  var cor=semMeta?RV_MUDO:(pct>=ritmo?RV_COR_OK:(pct>=ritmo-10?RV_COR_AT:RV_COR_RUIM));
+  var h='<div class="av-termo">';
+  h+='<div class="av-termo-topo"><span class="av-lbl">'+_gEsc(o.rotulo||'Vendido no mês')+'</span>'+
+     '<span class="av-pct" style="color:'+cor+'">'+(semMeta?'—':(Math.round(pct)+'%'))+'</span></div>';
+  h+='<div class="av-trilho" role="img" aria-label="'+_gEsc((o.rotulo||'')+': '+fmt(val)+' de '+fmt(meta))+'">';
+  h+='<div class="av-preenche" style="width:'+pct.toFixed(1)+'%;background:'+cor+'"></div>';
+  if(!semMeta&&ritmo>0&&ritmo<100)
+    h+='<div class="av-marca" style="left:'+ritmo.toFixed(1)+'%" title="onde o mês deveria estar hoje"></div>';
+  h+='</div>';
+  h+='<div class="av-termo-pes"><span>'+fmt(val)+'</span><span>meta '+(semMeta?'não definida':fmt(meta))+'</span></div>';
+  if(!semMeta&&ritmo>0&&ritmo<100)
+    h+='<div class="av-nota">A marca mostra onde o mês deveria estar hoje ('+Math.round(ritmo)+'%). '+
+       (pct>=ritmo?'Está na frente do relógio.':'Está atrás do relógio.')+'</div>';
+  h+='</div>';
+  return h;
+}
+
+/* ---------- 2) BARRAS DEITADAS: ranking de gente ---------- */
+function _avNomeCurto(n){
+  // no celular o sobrenome nao cabe e vira reticencia: mostra o primeiro nome
+  var p=String(n||'').trim().split(/\s+/);
+  if(p.length<2)return n;
+  return p[0]+' '+p[1].charAt(0)+'.';
+}
+function rvGBarraH(itens,o){
+  o=o||{};
+  var cel=(window.innerWidth||1200)<760;
+  var lista=(itens||[]).filter(function(x){return x&&Number(x.valor)>=0;});
+  if(!lista.length)return '<div class="av-vazio">'+_gEsc(o.vazio||'Sem dado no período.')+'</div>';
+  var max=0;lista.forEach(function(x){if(Number(x.valor)>max)max=Number(x.valor);});
+  if(max<=0)max=1;
+  var h='<div class="av-bh">';
+  lista.forEach(function(x){
+    var v=Number(x.valor)||0, w=Math.max(0.6,v/max*100), cor=x.cor||rvCorDe(x.nome);
+    var dica=_gEsc(x.nome)+'<br><b>'+fmt(v)+'</b>'+(x.sub?('<br>'+_gEsc(x.sub)):'');
+    h+='<div class="av-bh-l" onmousemove="rvDica(event,\''+dica.replace(/'/g,'&#39;')+'\')" onmouseleave="rvDicaSair()">'+
+       '<div class="av-bh-n"><span class="av-ponto" style="background:'+cor+'"></span>'+_gEsc(cel?_avNomeCurto(x.nome):x.nome)+'</div>'+
+       '<div class="av-bh-t"><div class="av-bh-b" style="width:'+w.toFixed(1)+'%;background:'+cor+'"></div></div>'+
+       '<div class="av-bh-v">'+(o.curto?fmtShort(v):fmt(v))+'</div>'+
+       '</div>';
+    if(x.nota)h+='<div class="av-bh-nota">'+x.nota+'</div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+/* ---------- 3) BARRAS EM PÉ: pulso por dia ou por mês ---------- */
+function rvGBarraV(itens,o){
+  o=o||{};
+  var cel=(window.innerWidth||1200)<760;
+  var lista=(itens||[]).slice();
+  // dia de saldo negativo (devolucao maior que a venda) nao vira barra: sai como nota, sem mentir
+  var negs=lista.filter(function(x){return Number(x.valor)<0;});
+  lista=lista.filter(function(x){return Number(x.valor)>0;});
+  var cortou=0;
+  if(cel&&lista.length>7){cortou=lista.length-7;lista=lista.slice(lista.length-7);}
+  if(!lista.length&&!negs.length)return '<div class="av-vazio">'+_gEsc(o.vazio||'Sem dado no período.')+'</div>';
+  var max=0,soma=0;
+  lista.forEach(function(x){var v=Number(x.valor)||0;if(v>max)max=v;soma+=v;});
+  if(max<=0)max=1;
+  var media=lista.length?soma/lista.length:0;
+  var W=cel?330:960, H=cel?150:200, base=H-22, topo=12;
+  var lg=W/Math.max(1,lista.length), bw=Math.min(54,Math.max(8,lg-8));
+  var cor=o.cor||RV_PAL[0];
+  var s='<svg class="av-svg" style="min-width:'+(cel?0:640)+'px" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+_gEsc(o.titulo||'gráfico de barras')+'">';
+  [0,.5,1].forEach(function(f){
+    var y=base-(base-topo)*f;
+    s+='<line x1="0" y1="'+y.toFixed(1)+'" x2="'+W+'" y2="'+y.toFixed(1)+'" stroke="'+RV_LINHA+'" stroke-width="1"/>';
+  });
+  if(media>0){
+    var ym=base-(base-topo)*(media/max);
+    s+='<line x1="0" y1="'+ym.toFixed(1)+'" x2="'+W+'" y2="'+ym.toFixed(1)+'" stroke="'+RV_SEC+'" stroke-width="1" stroke-dasharray="5 4"/>';
+  }
+  lista.forEach(function(x,i){
+    var v=Number(x.valor)||0, alt=Math.max(3,(base-topo)*(v/max));
+    var xx=i*lg+(lg-bw)/2, yy=base-alt;
+    var dica=_gEsc(x.rot||x.nome)+'<br><b>'+fmt(v)+'</b>'+(x.sub?('<br>'+_gEsc(x.sub)):'');
+    s+='<rect x="'+xx.toFixed(1)+'" y="'+yy.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+alt.toFixed(1)+'" rx="4" ry="4" fill="'+(x.cor||cor)+'"'+
+      ' onmousemove="rvDica(event,\''+dica.replace(/'/g,'&#39;')+'\')" onmouseleave="rvDicaSair()"><title>'+_gEsc(x.rot||'')+': '+fmt(v)+'</title></rect>';
+    if(o.rotulos!==false)
+      s+='<text x="'+(xx+bw/2).toFixed(1)+'" y="'+(H-7)+'" text-anchor="middle" font-size="'+(cel?11:12)+'" fill="'+RV_MUDO+'">'+_gEsc(x.rot||'')+'</text>';
+  });
+  s+='</svg>';
+  var notas='';
+  if(media>0)notas+='<div class="av-nota"><span class="av-tracinho"></span> média dos dias com venda: <b>'+fmt(media)+'</b></div>';
+  if(cortou)notas+='<div class="av-nota">Mostrando os 7 últimos dias com movimento. '+cortou+' dia(s) antes ficaram de fora nesta tela pequena — abra no computador para ver o mês inteiro.</div>';
+  negs.forEach(function(x){
+    notas+='<div class="av-nota" style="color:'+RV_COR_RUIM+'">'+_gEsc(x.rot)+' fechou negativo: <b>'+fmt(x.valor)+'</b> — devolução maior que a venda do dia.</div>';
+  });
+  return '<div class="av-rolax">'+s+'</div>'+notas;
+}
+
+/* ---------- 4) BARRAS LADO A LADO: vendido x recebido ---------- */
+function rvGDuplas(itens,o){
+  o=o||{};
+  var cel=(window.innerWidth||1200)<760;
+  var lista=(itens||[]).slice();
+  if(cel&&lista.length>3)lista=lista.slice(lista.length-3);
+  if(!lista.length)return '<div class="av-vazio">'+_gEsc(o.vazio||'Sem dado no período.')+'</div>';
+  var max=0;
+  lista.forEach(function(x){var a=Number(x.a)||0,b=Number(x.b)||0;if(a>max)max=a;if(b>max)max=b;});
+  if(max<=0)max=1;
+  var W=cel?330:960, H=cel?160:205, base=H-22, topo=12;
+  var lg=W/lista.length, bw=Math.min(62,Math.max(9,(lg-18)/2));
+  var cA=RV_PAL[0], cB=RV_PAL[1];
+  var s='<svg class="av-svg" style="min-width:'+(cel?0:640)+'px" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+_gEsc(o.titulo||'vendido contra recebido')+'">';
+  [0,.5,1].forEach(function(f){
+    var y=base-(base-topo)*f;
+    s+='<line x1="0" y1="'+y.toFixed(1)+'" x2="'+W+'" y2="'+y.toFixed(1)+'" stroke="'+RV_LINHA+'" stroke-width="1"/>';
+  });
+  lista.forEach(function(x,i){
+    var a=Number(x.a)||0, b=Number(x.b)||0;
+    var ha=Math.max(a>0?3:0,(base-topo)*(a/max)), hb=Math.max(b>0?3:0,(base-topo)*(b/max));
+    var x0=i*lg+(lg-(bw*2+2))/2;   // 2px de respiro entre as duas barras
+    var d1=_gEsc(x.rot)+'<br>'+_gEsc(o.rotA||'Vendido')+': <b>'+fmt(a)+'</b>';
+    var d2=_gEsc(x.rot)+'<br>'+_gEsc(o.rotB||'Recebido')+': <b>'+fmt(b)+'</b>';
+    if(a>0)s+='<rect x="'+x0.toFixed(1)+'" y="'+(base-ha).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ha.toFixed(1)+'" rx="4" ry="4" fill="'+cA+'"'+
+      ' onmousemove="rvDica(event,\''+d1.replace(/'/g,'&#39;')+'\')" onmouseleave="rvDicaSair()"></rect>';
+    if(b>0)s+='<rect x="'+(x0+bw+2).toFixed(1)+'" y="'+(base-hb).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hb.toFixed(1)+'" rx="4" ry="4" fill="'+cB+'"'+
+      ' onmousemove="rvDica(event,\''+d2.replace(/'/g,'&#39;')+'\')" onmouseleave="rvDicaSair()"></rect>';
+    s+='<text x="'+(x0+bw+1).toFixed(1)+'" y="'+(H-7)+'" text-anchor="middle" font-size="'+(cel?11:12)+'" fill="'+RV_MUDO+'">'+_gEsc(x.rot||'')+'</text>';
+  });
+  s+='</svg>';
+  var leg='<div class="av-leg"><span><i style="background:'+cA+'"></i>'+_gEsc(o.rotA||'Vendido')+'</span>'+
+          '<span><i style="background:'+cB+'"></i>'+_gEsc(o.rotB||'Recebido')+'</span></div>';
+  return leg+'<div class="av-rolax">'+s+'</div>';
+}
+
+/* ---------- 5) ANEL: um percentual que vale um número grande ---------- */
+function rvGAnel(o){
+  o=o||{};
+  var temDado=(o.pct!==null&&o.pct!==undefined&&!isNaN(Number(o.pct)));
+  var p=temDado?Math.max(0,Math.min(100,Number(o.pct))):0;
+  var alvo=(o.alvo===undefined||o.alvo===null)?null:Number(o.alvo);
+  var cor=!temDado?RV_MUDO:(alvo===null?RV_PAL[0]:(p>=alvo?RV_COR_OK:(p>=alvo*0.8?RV_COR_AT:RV_COR_RUIM)));
+  var R=34, C=2*Math.PI*R, on=C*p/100;
+  var s='<svg viewBox="0 0 90 90" class="av-anel" role="img" aria-label="'+_gEsc((o.rotulo||'')+': '+(temDado?(Math.round(p)+'%'):'sem dado'))+'">';
+  s+='<circle cx="45" cy="45" r="'+R+'" fill="none" stroke="'+RV_LINHA+'" stroke-width="9"/>';
+  if(temDado&&p>0)
+    s+='<circle cx="45" cy="45" r="'+R+'" fill="none" stroke="'+cor+'" stroke-width="9" stroke-linecap="round"'+
+       ' stroke-dasharray="'+on.toFixed(1)+' '+(C-on).toFixed(1)+'" transform="rotate(-90 45 45)"/>';
+  s+='<text x="45" y="49" text-anchor="middle" font-size="19" font-weight="700" fill="'+(temDado?RV_TINTA:RV_MUDO)+'">'+(temDado?(Math.round(p)+'%'):'—')+'</text>';
+  s+='</svg>';
+  return '<div class="av-anel-c"><div>'+s+'</div><div class="av-anel-t"><div class="av-lbl">'+_gEsc(o.rotulo||'')+'</div>'+
+         '<div class="av-anel-s">'+(o.sub||'')+'</div></div></div>';
+}
+
+
+
+/* ===================== v58 — o painel à vista da vendedora =====================
+   Mesmo motor de gráficos, mas dentro do cofre: só o número dela.
+   Nunca o total da loja, nunca o valor de um colega. */
+function renderAVistaVend(){
+  var el=document.getElementById('vdAVista');
+  if(!el||!me||rvEhGestao())return;
+  var m=currentMonth, nome=me.name;
+  var vend=rvBaseFaixa(m,nome), rec=rvRecebidoMes(m,nome);
+  var fx=getFaixasAtivas(), atual=calcFaixa(vend), prox=null;
+  for(var i=0;i<fx.length;i++){if(vend<fx[i].min){prox=fx[i];break;}}
+  var alvo=prox?prox.min:(fx.length?fx[fx.length-1].min:Math.max(vend,1));
+  var du=rvDiasUteisMes();
+  var ritmoPct=du.total>0?(du.passados/du.total*100):0;
+
+  var h='<div class="av-card">';
+  h+='<div class="av-tit">Meu mês à vista</div>';
+  h+='<div class="av-sub2">A faixa é conquistada pelo que você <b>vendeu</b>. O pagamento sai sobre o que <b>entrou no caixa</b>.</div>';
+  h+=rvGTermo({valor:vend,meta:alvo,ritmoPct:ritmoPct,
+      rotulo:prox?('Vendido — rumo a '+prox.nome):'Vendido no mês'});
+  if(prox){
+    h+='<div class="av-nota" style="font-size:12.5px;color:#A04F00">Faltam <b>'+fmt(prox.min-vend)+'</b> para '+_vgEsc(prox.nome)+
+       ' ('+rvPctFaixa(prox.pct)+')'+(du.faltam>0?(' — '+fmt((prox.min-vend)/du.faltam)+' por dia útil nos '+du.faltam+' que faltam.'):'.')+'</div>';
+  }else if(atual){
+    h+='<div class="av-nota" style="font-size:12.5px;color:#17795E">Você já está na faixa mais alta: '+_vgEsc(atual.nome)+' ('+rvPctFaixa(atual.pct)+').</div>';
+  }
+  h+='</div>';
+
+  /* o pulso das vendas dela, dia a dia */
+  var mapa={};
+  rvVendidoDe(m).forEach(function(v){
+    if(!v||normStr(v.vendedor)!==normStr(nome))return;
+    var d=String(rvDataISO(v.data)||'').slice(0,10);
+    if(!d)return;
+    mapa[d]=(mapa[d]||0)+_vgNum(v.valor);
+  });
+  var dias=Object.keys(mapa).sort().map(function(d){
+    return {rot:d.slice(8,10)+'/'+d.slice(5,7),valor:Math.round(mapa[d]*100)/100};
+  });
+  h+='<div class="av-card"><div class="av-tit">Meus dias de venda</div>'+
+     '<div class="av-sub2">Quanto você fechou em cada dia deste mês.</div>'+
+     rvGBarraV(dias,{titulo:'minhas vendas por dia',vazio:'Nenhuma venda sua registrada neste mês ainda.'})+'</div>';
+
+  /* o que vendi x o que entrou — só meu */
+  var ms=[], idx=MONTHS.indexOf(m);
+  for(var j=0;j<=idx;j++){
+    var mm=MONTHS[j];
+    if(rvBaseFaixa(mm,nome)>0||rvRecebidoMes(mm,nome)>0)ms.push(mm);
+  }
+  if(ms.length>6)ms=ms.slice(ms.length-6);
+  var dup=ms.map(function(x){return {rot:_avMesCurto(x),a:rvBaseFaixa(x,nome),b:rvRecebidoMes(x,nome)};});
+  h+='<div class="av-card"><div class="av-tit">O que vendi x o que entrou</div>'+
+     '<div class="av-sub2">O que não entrou não se perde: é pago no mês em que entrar, com a faixa daquele mês.</div>'+
+     rvGDuplas(dup,{rotA:'Vendi',rotB:'Entrou no caixa',titulo:'meu vendido contra meu recebido',
+       vazio:'Ainda não há mês com relatório importado.'})+'</div>';
+  el.innerHTML=h;
+}
+
+/* ===================== v58 — a tela da Gestão à vista ===================== */
+function _avMesesComDado(n){
+  var i=MONTHS.indexOf(currentMonth), out=[];
+  for(var j=0;j<=i;j++){if(rvTemVendido(MONTHS[j])||rvRecebidoMes(MONTHS[j])>0)out.push(MONTHS[j]);}
+  if(out.length>n)out=out.slice(out.length-n);
+  return out;
+}
+function _avMesCurto(m){
+  var L=String(MLAB[m]||m);
+  return L.slice(0,3)+'/'+L.slice(-2);
+}
+/* vendido por dia do mês corrente, só dias com movimento */
+function _avPorDia(m){
+  var lista=rvVendidoDe(m), mapa={};
+  lista.forEach(function(v){
+    if(!v)return;
+    var d=String(rvDataISO(v.data)||'').slice(0,10);
+    if(!d)return;
+    mapa[d]=(mapa[d]||0)+_vgNum(v.valor);
+  });
+  return Object.keys(mapa).sort().map(function(d){
+    return {rot:d.slice(8,10)+'/'+d.slice(5,7), valor:Math.round(mapa[d]*100)/100, sub:'dia '+d.slice(8,10)};
+  });
+}
+/* quanto falta para a próxima faixa — o número que faz o vendedor correr hoje */
+function _avProxFaixa(v){
+  var fx=getFaixasAtivas();
+  for(var i=0;i<fx.length;i++){if(v<fx[i].min)return {nome:fx[i].nome,min:fx[i].min,falta:fx[i].min-v,pct:fx[i].pct};}
+  return null;
+}
+
+function renderAVista(){
+  var el=document.getElementById('avCorpo');
+  if(!el)return;
+  if(!rvEhGestao()){el.innerHTML='';return;}
+  var m=currentMonth;
+  var vendido=rvBaseFaixa(m), recebido=rvRecebidoMes(m), meta=Number(S.meta)||0;
+  var du=rvDiasUteisMes();
+  var ritmoPct=du.total>0?(du.passados/du.total*100):0;
+  var proj=du.passados>0?(vendido/du.passados*du.total):0;
+  var falta=Math.max(0,meta-vendido);
+  var porDia=du.faltam>0?falta/du.faltam:0;
+
+  /* ---- 1. o mês ---- */
+  var h='<div class="av-grade2">';
+  h+='<div class="av-card">'+rvGTermo({valor:vendido,meta:meta,ritmoPct:ritmoPct,rotulo:'Vendido no mês'})+'</div>';
+  h+='<div class="av-card av-nums">'+
+     '<div><div class="av-lbl">Projeção de fechamento</div><div class="av-num" style="color:'+(proj>=meta?RV_COR_OK:RV_COR_AT)+'">'+fmtShort(proj)+'</div>'+
+       '<div class="av-sub">no ritmo de hoje</div></div>'+
+     '<div><div class="av-lbl">'+(falta>0?'Falta por dia útil':'Meta já batida')+'</div>'+
+       '<div class="av-num">'+(falta>0?fmtShort(porDia):'✓')+'</div>'+
+       '<div class="av-sub">'+(falta>0?(du.faltam+' dia(s) útil(eis) pela frente'):('sobrou '+fmt(vendido-meta)))+'</div></div>'+
+     '<div><div class="av-lbl">Entrou no caixa</div><div class="av-num">'+fmtShort(recebido)+'</div>'+
+       '<div class="av-sub">'+(vendido>0?(Math.round(recebido/vendido*100)+'% do vendido'):'—')+'</div></div>'+
+     '</div>';
+  h+='</div>';
+
+  /* ---- 2. pulso do mês, dia a dia ---- */
+  var dias=_avPorDia(m);
+  h+='<div class="av-card"><div class="av-tit">O pulso do mês</div>'+
+     '<div class="av-sub2">Quanto a loja vendeu em cada dia com movimento. A linha tracejada é a média.</div>'+
+     rvGBarraV(dias,{titulo:'vendido por dia',vazio:'Nenhuma venda registrada neste mês ainda.'})+'</div>';
+
+  /* ---- 3. quem está vendendo + faixa ---- */
+  var base=rvPorVendedor(m), nomes=Object.keys(base);
+  rvCorFixar(nomes);
+  var itens=nomes.map(function(n){
+    var v=(base[n]&&base[n].total)||0, q=(base[n]&&base[n].qtd)||0;
+    var f=calcFaixa(v), px=_avProxFaixa(v), soc=rvEhSocio(n);
+    var nota='';
+    if(!soc&&px)nota='<span class="av-falta">faltam <b>'+fmt(px.falta)+'</b> para '+_vgEsc(px.nome)+' ('+rvPctFaixa(px.pct)+')</span>';
+    else if(!soc&&!px)nota='<span class="av-falta av-top">faixa mais alta alcançada</span>';
+    return {nome:n,valor:v,
+      sub:q+' venda(s) · '+(f?(f.nome+' '+rvPctFaixa(f.pct)):'ainda sem faixa')+(soc?' · sócio, sem pagamento':''),
+      nota:nota};
+  }).sort(function(a,b){return b.valor-a.valor;});
+  h+='<div class="av-card"><div class="av-tit">Quem está vendendo</div>'+
+     '<div class="av-sub2">A faixa é conquistada pelo <b>vendido</b> do mês. Quem está perto de subir aparece com o que falta.</div>'+
+     rvGBarraH(itens,{vazio:'Nenhuma venda realizada importada neste mês.'})+'</div>';
+
+  /* ---- 4. vendido x recebido, mês a mês ---- */
+  var ms=_avMesesComDado(6);
+  var dup=ms.map(function(x){return {rot:_avMesCurto(x),a:rvVendidoMes(x),b:rvRecebidoMes(x)};});
+  h+='<div class="av-card"><div class="av-tit">Vendeu x recebeu</div>'+
+     '<div class="av-sub2">Vendido é o pedido fechado. Recebido é o dinheiro que entrou no caixa naquele mês.</div>'+
+     rvGDuplas(dup,{rotA:'Vendido',rotB:'Recebido',titulo:'vendido contra recebido',vazio:'Ainda não há meses com relatório importado.'})+'</div>';
+
+  /* ---- 5. entrega e pós-venda ---- */
+  var pvMin=getPvMinPct();
+  var vsMes=(S.vendas||[]).filter(function(v){return _doMes(v)&&Number(v.valor)>0;});
+  var pvOk=0;
+  vsMes.forEach(function(v){
+    var p=S.posvenda[osBase(v.os)]||{};
+    if(p.fotoStatus==='coletada'&&p.avalStatus==='coletada'&&p.follow30==='realizado')pvOk++;
+  });
+  var pvPct=vsMes.length?Math.round(pvOk/vsMes.length*100):null;
+  var ents=0,entOk=0,entOc=0;
+  (S.vendas||[]).filter(_doMes).forEach(function(v){
+    var i=infoEntregaPorOS(v.os);
+    if(i.situacao==='sem_entrega')return;
+    ents++;
+    if(i.situacao==='concluida')entOk++;
+    if(i.pendItens)entOc++;
+  });
+  var entPct=ents>0?Math.round(entOk/ents*100):null;
+  h+='<div class="av-grade2">';
+  h+='<div class="av-card">'+rvGAnel({pct:pvPct,alvo:pvMin,rotulo:'Pós-venda completo',
+      sub:(pvPct===null?'nenhuma venda no mês para medir':(pvOk+' de '+vsMes.length+' vendas com foto, avaliação e retorno de 30 dias<br><span class="av-mudo">mínimo da regra: '+pvMin+'%</span>'))})+'</div>';
+  h+='<div class="av-card">'+rvGAnel({pct:entPct,alvo:90,rotulo:'Entregas concluídas',
+      sub:(entPct===null?'nenhuma entrega registrada para as vendas do mês':(entOk+' de '+ents+' entregas do mês concluídas'+(entOc?('<br><span class="av-mudo">'+entOc+' com pendência aberta</span>'):'')))})+'</div>';
+  h+='</div>';
+
+  el.innerHTML=h;
+  var sub=document.getElementById('avSub');
+  if(sub)sub.textContent=(MLAB[m]||m)+' · dia útil '+du.passados+' de '+du.total+' · '+du.faltam+' pela frente';
+}
+
 window.addEventListener('scroll',function(){var b=document.getElementById('backTop');if(b)b.style.display=(window.scrollY>300)?'block':'none';});
 </script>
 
