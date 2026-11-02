@@ -1062,19 +1062,13 @@ body.rv-lateral #rvSub{display:flex}
     <div class="card">
       <div class="card-hd"><h3 class="card-title">Importar Orçamentos do ERP (por Vendedor)</h3></div>
       <div class="alert alert-info">
-        📋 <strong>Como funciona:</strong> Selecione um ou mais arquivos CSV (um por vendedor).<br>
-        O vendedor é detectado automaticamente pelo nome do arquivo — ex: <code>OR_Gustavo.csv</code> → Gustavo.<br>
-        Colunas necessárias: <strong>Data, Cliente, Valor</strong>. Número gerado automaticamente.
+        📋 <strong>Como funciona:</strong> no ERP, gere o relatório <strong>Orçamentos do Vendedor</strong> do mês, um vendedor por vez, e baixe em <strong>PDF</strong>. Pode selecionar todos de uma vez.<br>
+        O vendedor é lido <strong>de dentro do arquivo</strong> — o nome do arquivo não importa.<br>
+        Antes de gravar, o painel confere a soma de cada PDF com o <strong>TOTAL DO PERÍODO</strong> impresso nele. Se não bater, o arquivo é recusado e nada é gravado.
       </div>
       <div class="field">
-        <label>Arquivos CSV de Orçamentos <span style="color:var(--muted);font-weight:400">(pode selecionar vários ao mesmo tempo)</span></label>
-        <input type="file" id="orcCsvFile" accept=".csv,.txt" multiple style="padding:8px">
-      </div>
-      <div id="orcVendSelect" class="hidden" style="margin:12px 0">
-        <div class="alert alert-info">⚠️ Vendedor não detectado pelo nome do arquivo. Selecione manualmente:</div>
-        <div class="field"><label>Arquivo: <span id="orcVendArqLabel"></span></label>
-          <select id="orcVendManual" class="filter-input" style="width:100%;padding:10px"></select>
-        </div>
+        <label>PDFs de Orçamentos <span style="color:var(--muted);font-weight:400">(um por vendedor — pode selecionar vários)</span></label>
+        <input type="file" id="orcCsvFile" accept=".pdf,.csv,.txt" multiple style="padding:8px">
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
         <button class="btn btn-teal" onclick="importCSVOrcamentos()">📊 Importar Orçamentos</button>
@@ -1353,8 +1347,8 @@ body.rv-lateral #rvSub{display:flex}
   <div id="vt-orcamentos" class="tab-pane">
     <div class="card">
       <div class="card-hd"><h3 class="card-title">Importar Orçamentos do ERP</h3></div>
-      <div class="alert alert-info">Exporte seu relatório do ERP, salve como <code>OR_SeuNome.csv</code> e importe diariamente. Colunas: <strong>Data, Cliente, Valor</strong>.</div>
-      <div class="field"><label>Arquivo CSV</label><input type="file" id="vorcCsvFile" accept=".csv,.txt" style="padding:8px"></div>
+      <div class="alert alert-info">No ERP, gere o relatório <strong>Orçamentos do Vendedor</strong>, baixe em <strong>PDF</strong> e importe aqui. Não precisa converter nem renomear nada — o painel lê o seu nome de dentro do arquivo e só aceita o relatório que for seu.</div>
+      <div class="field"><label>PDF de Orçamentos</label><input type="file" id="vorcCsvFile" accept=".pdf,.csv,.txt" style="padding:8px"></div>
       <button class="btn btn-teal" onclick="importCSVOrcamentosVend()">📊 Importar</button>
       <div id="vorcImportMsg" style="margin-top:12px"></div>
     </div>
@@ -3693,61 +3687,227 @@ function getBonusColetivo(){return (G.config&&G.config.bonusColetivo)||150;}
 function getPvMinPct(){return (G.config&&G.config.pvMinPct!=null)?G.config.pvMinPct:40;}
 
 // ===== IMPORTAR ORÇAMENTOS VENDEDOR =====
-function importCSVOrcamentosVend(){
-  const input=document.getElementById('vorcCsvFile');
-  const msg=document.getElementById('vorcImportMsg');
-  if(!input.files.length){msg.innerHTML='<div class="alert alert-err">❌ Selecione arquivo</div>';return;}
-  const file=input.files[0];
-  msg.innerHTML='<div class="alert alert-info">⏳ Importando...</div>';
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const lines=e.target.result.split('\n').filter(function(l){return l.trim();});
-      if(lines.length<2){msg.innerHTML='<div class="alert alert-err">❌ Arquivo vazio</div>';return;}
-      const sep=lines[0].includes(';')?';':',';
-      const h=lines[0].split(sep).map(function(x){return x.trim().toLowerCase();});
-      const findC=function(cands){return h.findIndex(function(x){return cands.some(function(c){return x.includes(c);});});};
-      const col={
-        data:findC(['data','date']),
-        cliente:findC(['cliente','client','nome','descricao']),
-        valor:findC(['valor','value','total'])
-      };
-      let novos=0,ignorados=0;
-      if(col.data<0){msg.innerHTML='<div class="alert alert-err">⚠️ Não encontrei a coluna de DATA no arquivo. Cabeçalhos lidos: <strong>'+h.join(', ')+'</strong>. A data de hoje será usada. Renomeie a coluna para "Data" no seu relatório para corrigir.</div>';}
-      let seq=S.orcamentos.filter(function(o){return normStr(o.vendedor)===normStr(me.name);}).length+1;
-      for(let i=1;i<lines.length;i++){
-        const r=lines[i].split(sep).map(function(x){return x.trim().replace(/^"|"$/g,'');});
-        if(r.length<2)continue;
-        const data=col.data>=0?(r[col.data]||'').trim():'';
-        const cliente=col.cliente>=0?(r[col.cliente]||'').trim().replace(/\s*[-\u2013]\s*[\d\s()]+$/,'').trim():'';
-        const valor=parseValorBROrc(col.valor>=0?r[col.valor]:'0');
-        if(!cliente||isNaN(valor)||valor<=0){ignorados++;continue;}
-        let dataISO=hojeISO();
-        if(data){const pts=data.split('/');if(pts.length===3)dataISO=pts[2]+'-'+pts[1]+'-'+pts[0];}
-        const existe=S.orcamentos.find(function(o){
-          return normStr(o.vendedor)===normStr(me.name)&&o.data===dataISO&&normStr(o.cliente)===normStr(cliente);
-        });
-        if(!existe){
-          const numOrc='ORC-'+dataISO.replace(/-/g,'')+'-'+String(seq).padStart(3,'0');
-          S.orcamentos.push({id:novoIdNum(),num:numOrc,cliente:cliente,tel:'',valor:valor,vendedor:me.name,data:dataISO,status:'aberto',os:null});
-          seq++;novos++;
-        }else{if(Math.abs((existe.valor||0)-valor)>0.01){existe.valor=valor;}ignorados++;}
-      }
-      saveData();renderAll();
-      msg.innerHTML=`<div class="alert">✅ ${novos} novo${novos!==1?'s':''} importado${novos!==1?'s':''}${ignorados?' • '+ignorados+' já estavam no sistema (não duplicados)':''}.</div>`;
-    }catch(err){
-      msg.innerHTML='<div class="alert alert-err">❌ Erro: '+err.message+'</div>';
-    }
-  };
-  reader.onerror=function(){msg.innerHTML='<div class="alert alert-err">❌ Erro ao ler arquivo</div>';};
-  reader.readAsText(file);
+// ===== v59: ORCAMENTOS EM PDF =====
+// O ERP da Revestir SO exporta PDF. Ate a v58 este quadro exigia CSV e a Zilamar
+// dependia de um conversor de terceiros. Agora le o PDF direto, como ja faziam os
+// quadros de Vendas Realizadas e Comissao.
+// Layout do relatorio "ORCAMENTOS DO VENDEDOR":
+//   01/11/2026 REVESTIR 01:05:52
+//   ORCAMENTOS DO VENDEDOR: ALEXSANDER VINICIOS PG: 0001
+//   LANCADOS DE: 01/10/2026 A 31/10/2026
+//   DATA CLIENTE - TELEFONE VALOR
+//   31/10/2026 JULIA LETICIA BARBOSA 15.879,68
+//   TOTAL DO PERIODO => 310.777,29
+// O nome do vendedor vem DENTRO do PDF: o nome do arquivo deixou de importar.
+function rvLerOrcPdf(linhas){
+  var r={vendedorPdf:'',de:'',ate:'',linhas:[],totalPdf:null,soma:0,erros:[]};
+  var cab=linhas.slice(0,12).join(' ');
+  var mv=cab.match(/ORCAMENTOS\s+DO\s+VENDEDOR:\s*(.+?)\s+PG:/i);
+  if(mv)r.vendedorPdf=mv[1].replace(/\s+/g,' ').trim();
+  var mp=cab.match(/LANCADOS\s+DE:\s*(\d{2}\/\d{2}\/\d{4})\s+A\s+(\d{2}\/\d{2}\/\d{4})/i);
+  if(mp){r.de=_rvIsoBR(mp[1]);r.ate=_rvIsoBR(mp[2]);}
+  for(var i=0;i<linhas.length;i++){
+    var l=linhas[i];
+    var mt=l.match(/TOTAL\s+DO\s+PERIODO\s*=>\s*(-?[\d.]*\d,\d{2})/i);
+    if(mt){r.totalPdf=rvNumPdf(mt[1]);continue;}
+    var m=l.match(/^(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+(-?[\d.]*\d,\d{2})$/);
+    if(!m)continue;
+    var cli=m[2].replace(/\s+/g,' ').trim(),tel='';
+    var mtel=cli.match(/\s*[-–]\s*([+\d][\d\s()\-]{6,})$/);
+    if(mtel){tel=mtel[1].replace(/\s+/g,' ').trim();cli=cli.slice(0,mtel.index).trim();}
+    if(!cli)continue;
+    r.linhas.push({data:_rvIsoBR(m[1]),cliente:cli,tel:tel,valor:rvNumPdf(m[3])});
+  }
+  var s=0;
+  for(var j=0;j<r.linhas.length;j++)s=Math.round((s+r.linhas[j].valor)*100)/100;
+  r.soma=s;
+  if(!r.vendedorPdf)r.erros.push('nao achei o vendedor no PDF — use o relatorio "Orcamentos do Vendedor" do ERP');
+  if(!r.de||!r.ate)r.erros.push('nao achei o periodo (LANCADOS DE) no PDF');
+  if(!r.linhas.length)r.erros.push('nenhum orcamento encontrado no PDF');
+  if(r.totalPdf===null)r.erros.push('nao achei o TOTAL DO PERIODO no PDF');
+  else if(Math.abs(s-r.totalPdf)>0.01)r.erros.push('a soma das linhas ('+fmt(s)+') nao bate com o TOTAL impresso no PDF ('+fmt(r.totalPdf)+')');
+  return r;
 }
+// CSV antigo continua aceito: devolve o MESMO formato do PDF.
+function rvLerOrcCsv(txt){
+  var r={vendedorPdf:'',de:'',ate:'',linhas:[],totalPdf:null,soma:0,erros:[]};
+  var L=String(txt||'').split('\n').filter(function(x){return x.trim();});
+  if(L.length<2){r.erros.push('arquivo vazio');return r;}
+  var sep=L[0].indexOf(';')>=0?';':',';
+  var h=L[0].split(sep).map(function(x){return x.trim().toLowerCase();});
+  function findC(c){return h.findIndex(function(x){return c.some(function(y){return x.indexOf(y)>=0;});});}
+  var col={data:findC(['data','date','dt']),cliente:findC(['cliente','client','nome','descricao']),
+           valor:findC(['valor','value','total','preco']),vend:findC(['vendedor','vendedora','atendente']),
+           tel:findC(['telefone','fone','celular','whats'])};
+  var de='',ate='';
+  for(var i=1;i<L.length;i++){
+    var p=L[i].split(sep).map(function(x){return x.trim().replace(/^"|"$/g,'');});
+    if(p.length<2)continue;
+    var cli=col.cliente>=0?String(p[col.cliente]||'').replace(/\s*[-–]\s*[\d\s()]+$/,'').trim():'';
+    var val=parseValorBROrc(col.valor>=0?p[col.valor]:'0');
+    if(!cli||isNaN(val)||val<=0)continue;
+    var iso=hojeISO(),d=col.data>=0?String(p[col.data]||'').trim():'';
+    if(d){var pts=d.split('/');if(pts.length===3)iso=pts[2]+'-'+pts[1]+'-'+pts[0];}
+    var vl=col.vend>=0?String(p[col.vend]||'').trim():'';
+    if(vl&&!r.vendedorPdf)r.vendedorPdf=vl;
+    if(!de||iso<de)de=iso;
+    if(!ate||iso>ate)ate=iso;
+    r.linhas.push({data:iso,cliente:cli,tel:col.tel>=0?String(p[col.tel]||'').trim():'',valor:val});
+  }
+  r.de=de;r.ate=ate;
+  var s=0;
+  for(var j=0;j<r.linhas.length;j++)s=Math.round((s+r.linhas[j].valor)*100)/100;
+  r.soma=s;
+  if(!r.linhas.length)r.erros.push('nenhuma linha valida — confira as colunas Data, Cliente e Valor');
+  return r;
+}
+// Roteia pelo tipo do arquivo. PDF e CSV saem no mesmo formato.
+function rvOrcDoArquivo(file,ok,falha){
+  var nome=String(file.name||'');
+  if(/\.pdf$/i.test(nome)||file.type==='application/pdf'){
+    rvLerPdfArquivo(file,function(linhas){ok(rvLerOrcPdf(linhas));},falha);
+    return;
+  }
+  var fr=new FileReader();
+  fr.onload=function(e){ok(rvLerOrcCsv(String(e.target.result||'')));};
+  fr.onerror=function(){falha('erro de leitura do arquivo');};
+  fr.readAsText(file);
+}
+// Chave de identidade do orcamento. v59: o VALOR entra na chave.
+// Ate a v58 era vendedor+data+cliente: dois orcamentos do mesmo cliente no mesmo dia
+// (acontece direto) viravam um so e o painel APAGAVA um deles. Em outubro/2026 isso
+// comia 7 orcamentos e R$ 40.424,94.
+function _orcChave(vend,data,cliente,valor){
+  return normStr(vend)+'|'+String(data)+'|'+normStr(cliente)+'|'+Math.round(Number(valor)*100);
+}
+// Campos de acompanhamento que NUNCA podem se perder numa reimportacao.
+var _ORC_MANTER=['id','num','status','os','dataConv','motivoPerda','proxContato','aguardando','obs','fornAguard','aguardDesde','_de'];
+
+// ===== v59: IMPORTACAO DE ORCAMENTOS (admin) — aceita PDF e CSV =====
+function importCSVOrcamentos(){if(!rvPode('importar')){rvBloqueado('importar os orcamentos');return;}
+  var input=document.getElementById('orcCsvFile');
+  var msg=document.getElementById('orcImportMsg');
+  if(!input||!input.files.length){msg.innerHTML=_rvAlerta('err','❌ Selecione pelo menos um arquivo');return;}
+  _orcLerTodos([].slice.call(input.files),msg,null);
+}
+function importCSVOrcamentosVend(){
+  var input=document.getElementById('vorcCsvFile');
+  var msg=document.getElementById('vorcImportMsg');
+  if(!input||!input.files.length){msg.innerHTML=_rvAlerta('err','❌ Selecione o arquivo');return;}
+  _orcLerTodos([].slice.call(input.files),msg,(me&&me.name)||'');
+}
+function _orcLerTodos(files,msg,soEste){
+  msg.innerHTML=_rvAlerta('info','⏳ Lendo '+files.length+' arquivo'+(files.length===1?'':'s')+'...');
+  var lidos=[],erros=[],i=0;
+  function prox(){
+    if(i>=files.length){_orcAplicar(lidos,erros,msg,soEste);return;}
+    var f=files[i];
+    rvOrcDoArquivo(f,function(r){
+      r.arquivo=f.name;
+      if(r.erros.length)r.erros.forEach(function(e){erros.push(f.name+': '+e);});
+      else lidos.push(r);
+      i++;prox();
+    },function(e){erros.push(f.name+': '+e);i++;prox();});
+  }
+  prox();
+}
+function _orcAplicar(lidos,erros,msg,soEste){
+  if(erros.length){msg.innerHTML=_rvListaErros('Arquivo recusado — nada foi gravado.',erros);return;}
+  if(!lidos.length){msg.innerHTML=_rvAlerta('err','❌ Nenhum arquivo válido. Nada foi gravado.');return;}
+  // 1) quem e o vendedor: primeiro o nome impresso DENTRO do arquivo; o nome do arquivo e so reserva
+  var faltam=[];
+  lidos.forEach(function(r){
+    var v=r.vendedorPdf?matchVendedor(r.vendedorPdf):null;
+    if(!v)v=extrairVendedorDoNome(r.arquivo||'');
+    r.vendedor=v;
+    if(!v)faltam.push((r.arquivo||'arquivo')+': '+(r.vendedorPdf?('"'+r.vendedorPdf+'" não está cadastrado'):'não identifiquei o vendedor'));
+  });
+  if(faltam.length){msg.innerHTML=_rvListaErros('Vendedor não reconhecido — nada foi gravado.',faltam.concat(['Cadastre em Equipe → Usuários, ou coloque esse nome em "nome nas vendas" do vendedor.']));return;}
+  // 2) cofre: o vendedor so importa o relatorio dele
+  if(soEste){
+    var fora=lidos.filter(function(r){return normStr(r.vendedor)!==normStr(soEste);});
+    if(fora.length){msg.innerHTML=_rvListaErros('Arquivo recusado — nada foi gravado.',fora.map(function(r){return (r.arquivo||'arquivo')+': este relatório é de '+r.vendedor+'. Você só pode importar o seu.';}));return;}
+  }
+  // 3) dois arquivos do mesmo vendedor no mesmo lote: recusa (um apagaria o outro)
+  var vistos={},dup=[];
+  lidos.forEach(function(r){var k=normStr(r.vendedor);if(vistos[k])dup.push(r.vendedor);vistos[k]=1;});
+  if(dup.length){msg.innerHTML=_rvListaErros('Nada foi gravado.',dup.map(function(n){return n+' veio em mais de um arquivo. Importe um relatório por vendedor.';}));return;}
+  // 4) cada linha vai para o mes da propria data
+  var mesesFora=[],porMes={},janela={};
+  lidos.forEach(function(r){
+    var k=normStr(r.vendedor);
+    if(!janela[k])janela[k]={de:r.de,ate:r.ate};
+    else{if(r.de&&r.de<janela[k].de)janela[k].de=r.de;if(r.ate&&r.ate>janela[k].ate)janela[k].ate=r.ate;}
+    r.linhas.forEach(function(l){
+      var m=_rvMesDaData(l.data);
+      if(MONTHS.indexOf(m)<0){if(mesesFora.indexOf(m)<0)mesesFora.push(m);return;}
+      (porMes[m]=porMes[m]||[]).push({vendedor:r.vendedor,data:l.data,cliente:l.cliente,tel:l.tel,valor:l.valor});
+    });
+  });
+  if(mesesFora.length){msg.innerHTML=_rvListaErros('Nada foi gravado.',['o arquivo pega meses que o painel não tem: '+mesesFora.join(', ')]);return;}
+  var mesesOrd=Object.keys(porMes).sort(function(a,b){return MONTHS.indexOf(a)-MONTHS.indexOf(b);});
+  if(!mesesOrd.length){msg.innerHTML=_rvAlerta('err','❌ Nenhum orçamento para gravar.');return;}
+  // 5) plano por mes — espelha o periodo do relatorio, preservando o acompanhamento
+  var planos=[],tot={novos:0,mantidos:0,saem:0,conv:0,linhas:0},seq=1;
+  mesesOrd.forEach(function(mes){
+    var atuais=(_vgDados(mes).orcamentos||[]).filter(function(o){return !!o;});
+    var disp={};
+    atuais.forEach(function(o){
+      if(o._de)return;
+      var k=_orcChave(o.vendedor,o.data,o.cliente,o.valor);
+      (disp[k]=disp[k]||[]).push(o);
+    });
+    var usados=[],nova=[],P={mes:mes,novos:0,mantidos:0,saem:0,conv:0,linhas:porMes[mes].length};
+    porMes[mes].forEach(function(l){
+      var k=_orcChave(l.vendedor,l.data,l.cliente,l.valor);
+      var ex=(disp[k]&&disp[k].length)?disp[k].shift():null;
+      if(ex){
+        usados.push(ex);
+        if(l.tel&&!ex.tel)ex.tel=l.tel;
+        nova.push(ex);P.mantidos++;
+      }else{
+        nova.push({id:novoIdNum(),num:'ORC-'+String(l.data).replace(/-/g,'')+'-'+String(seq).padStart(3,'0'),
+          cliente:l.cliente,tel:l.tel||'',valor:l.valor,vendedor:l.vendedor,data:l.data,status:'aberto',os:null});
+        seq++;P.novos++;
+      }
+    });
+    atuais.forEach(function(o){
+      if(usados.indexOf(o)>=0)return;
+      if(o._de){nova.push(o);return;}
+      var jk=janela[normStr(o.vendedor)];
+      if(jk&&jk.de&&o.data>=jk.de&&o.data<=jk.ate){
+        if(o.status==='convertido'){nova.push(o);P.conv++;return;} // convertido nunca some
+        P.saem++;return;
+      }
+      nova.push(o);
+    });
+    P.nova=nova;
+    ['novos','mantidos','saem','conv','linhas'].forEach(function(f){tot[f]+=P[f];});
+    planos.push(P);
+  });
+  // 6) confirmacao: nada foi gravado ate aqui
+  var soma=0;
+  lidos.forEach(function(r){soma=Math.round((soma+r.soma)*100)/100;});
+  var txt='Orçamentos — '+lidos.length+' relatório(s), total '+fmt(soma)+' (confere com o total impresso em cada PDF).\n\n'+
+    lidos.map(function(r){return r.vendedor+': '+r.linhas.length+' orçamentos · '+fmt(r.soma);}).join('\n')+'\n\n'+
+    (planos.length>1?(planos.map(function(P){return (MLAB[P.mes]||P.mes)+': '+P.linhas+' linhas';}).join('\n')+'\n\n'):'')+
+    'Novos: '+tot.novos+'\nJá estavam no painel: '+tot.mantidos+'\nSaem (não estão mais no relatório): '+tot.saem+
+    (tot.conv?('\nJá convertidos em venda — mantidos: '+tot.conv):'')+'\n\nGravar?';
+  if(!confirm(txt)){msg.innerHTML=_rvAlerta('info','Cancelado. Nada foi gravado.');return;}
+  planos.forEach(function(P){_rvTrocaMes(P.mes);S.orcamentos=P.nova;saveData();});
+  rvIrParaMes(planos[planos.length-1].mes);renderAll();
+  msg.innerHTML=_rvAlerta('','✅ <strong>Orçamentos gravados</strong> — '+fmt(soma)+' em '+tot.linhas+' orçamentos'+
+    (planos.length>1?(' · '+planos.length+' meses'):'')+'. '+tot.novos+' novos · '+tot.mantidos+' já estavam · '+tot.saem+' saíram'+
+    (tot.conv?(' · '+tot.conv+' convertidos mantidos'):'')+'.<br><span style="font-size:12px">'+
+    lidos.map(function(r){return _vgEsc(r.vendedor)+' '+fmt(r.soma);}).join(' · ')+'</span>');
+}
+
 
 
 // ===== IMPORTAR CSV DE ORÇAMENTOS (multi-arquivo, vendedor pelo nome) =====
 function extrairVendedorDoNome(filename){
   // Remove extensão e prefixos comuns: OR_, ORC_, Orcamentos_, etc.
-  let nome=filename.replace(/\.csv$/i,'').replace(/\.txt$/i,'');
+  let nome=filename.replace(/\.(csv|txt|pdf)$/i,'');  // v59: o ERP so exporta PDF
   nome=nome.replace(/^(OR_|ORC_|Orc_|Orcamento_|Orcamentos_|Orc\.)/i,'');
   // v38: OR_09_26_GISELY -> antes pegava "09" e recusava o arquivo. Agora testa cada pedaco
   // que nao e numero, do ultimo para o primeiro.
@@ -3779,81 +3939,6 @@ function limparOrcMes(){
   document.getElementById('orcImportMsg').innerHTML='<div class="alert">✅ Orçamentos apagados. Reimporte os arquivos.</div>';
 }
 
-function importCSVOrcamentos(){if(!rvPode('importar')){rvBloqueado('importar os orcamentos');return;}
-  const input=document.getElementById('orcCsvFile');
-  const msg=document.getElementById('orcImportMsg');
-  if(!input.files.length){msg.innerHTML='<div class="alert alert-err">❌ Selecione pelo menos um arquivo</div>';return;}
-  const files=[...input.files];
-  let totalNovos=0,totalAtualizados=0,totalIgnorados=0;
-  const erros=[];
-  let seqGlobal=S.orcamentos.length+1;
-  let processed=0;
-  
-  msg.innerHTML=`<div class="alert alert-info">⏳ Processando ${files.length} arquivo(s)...</div>`;
-  
-  function processFile(index){
-    if(index>=files.length){
-      // Todos processados
-      saveData();renderAll();
-      let html=`<div class="alert">✅ ${totalNovos} novos${totalAtualizados?' • '+totalAtualizados+' atualizados':''}${totalIgnorados?' • '+totalIgnorados+' ignorados':''}</div>`;
-      if(erros.length>0)html+=`<div class="alert alert-err">⚠️ Arquivos com erro:<br>${erros.map(e=>'• '+e).join('<br>')}</div>`;
-      msg.innerHTML=html;
-      return;
-    }
-    const file=files[index];
-    const reader=new FileReader();
-    reader.onload=function(e){
-      try{
-        const lines=e.target.result.split('\n').filter(l=>l.trim());
-        if(lines.length<2){erros.push(file.name+': arquivo vazio');processFile(index+1);return;}
-        const sep=lines[0].includes(';')?';':',';
-        const h=lines[0].split(sep).map(x=>x.trim().toLowerCase());
-        const findC=function(cands){return h.findIndex(function(x){return cands.some(function(c){return x.includes(c);});});};
-        const col={
-          data:findC(['data','date','dt']),
-          cliente:findC(['cliente','client','nome','descricao']),
-          valor:findC(['valor','value','total','preco']),
-          vend:findC(['vendedor','vendedora','atendente']),
-          tel:findC(['telefone','fone','celular','whats'])
-        };
-        // v38: o vendedor vem da coluna do proprio arquivo; o nome do arquivo e so reserva.
-        const vendArq=extrairVendedorDoNome(file.name);
-        const vendCol0=col.vend>=0&&lines[1]?matchVendedor((lines[1].split(sep)[col.vend]||'').trim().replace(/^"|"$/g,'')):null;
-        if(!vendArq&&!vendCol0){erros.push(file.name+': vendedor não reconhecido. Confira se ele está cadastrado em Equipe → Usuários (ou coloque o nome no arquivo, ex.: OR_09_26_GISELY.csv)');processFile(index+1);return;}
-        for(let i=1;i<lines.length;i++){
-          const r=lines[i].split(sep).map(function(x){return x.trim().replace(/^"|"$/g,'');});
-          if(r.length<2)continue;
-          const data=col.data>=0?(r[col.data]||'').trim():'';
-          const cliente=col.cliente>=0?(r[col.cliente]||'').trim().replace(/\s*[-\u2013]\s*[\d\s()]+$/,'').trim():'';
-          const valor=parseValorBROrc(col.valor>=0?r[col.valor]:'0');
-          const vendedor=(col.vend>=0&&r[col.vend]?matchVendedor(r[col.vend].trim()):null)||vendArq||vendCol0;
-          const tel=col.tel>=0?(r[col.tel]||'').trim():'';
-          if(!vendedor||!cliente||isNaN(valor)||valor<=0){totalIgnorados++;continue;}
-          let dataISO=hojeISO();
-          if(data){const pts=data.split('/');if(pts.length===3)dataISO=pts[2]+'-'+pts[1]+'-'+pts[0];}
-          const existe=S.orcamentos.find(function(o){
-            return normStr(o.vendedor)===normStr(vendedor)&&o.data===dataISO&&normStr(o.cliente)===normStr(cliente);
-          });
-          if(existe){
-            var _mud=false;
-            if(Math.abs((existe.valor||0)-valor)>0.01){existe.valor=valor;_mud=true;}
-            if(tel&&!existe.tel){existe.tel=tel;_mud=true;}
-            if(_mud)totalAtualizados++;else totalIgnorados++;
-          }else{
-            const numOrc='ORC-'+dataISO.replace(/-/g,'')+'-'+String(seqGlobal).padStart(3,'0');
-            S.orcamentos.push({id:novoIdNum(),num:numOrc,cliente:cliente,tel:tel,valor:valor,vendedor:vendedor,data:dataISO,status:'aberto',os:null});
-            seqGlobal++;totalNovos++;
-          }
-        }
-        console.log(file.name+': '+totalNovos+' novos processados');
-      }catch(err){erros.push(file.name+': erro ao processar — '+err.message);}
-      processFile(index+1);
-    };
-    reader.onerror=function(){erros.push(file.name+': erro de leitura');processFile(index+1);};
-    reader.readAsText(file);
-  }
-  processFile(0);
-}
 
 
 function importCSV(){if(!rvPode('importar')){rvBloqueado('importar o faturamento');return;}
