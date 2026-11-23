@@ -583,7 +583,7 @@ body.rv-lateral #rvSub{display:flex}
   </div>
 
   <!-- TABS VENDEDOR -->
-  <div class="rv-selo">PAINEL v64</div>
+  <div class="rv-selo">PAINEL v65</div>
   <div class="tabs hidden" id="vendTabs">
     <button class="tab-btn active" onclick="tab(this,'vt-meumes')">📊 Meu Mês</button>
     <button class="tab-btn" onclick="tab(this,'vt-dashboard')">📈 Meu Dashboard</button>
@@ -7633,8 +7633,8 @@ window.addEventListener('scroll',function(){var b=document.getElementById('backT
 
 
 <script>
-/* ===== v64: GESTAO DAS ENTREGAS DENTRO DO PAINEL — so ADM, so leitura =====
-   As contas sao COPIA FIEL do App de Entrega v64 (mesmos numeros nos dois lugares).
+/* ===== v65: GESTAO DAS ENTREGAS DENTRO DO PAINEL — so ADM, so leitura =====
+   As contas sao COPIA FIEL do App de Entrega v65 (mesmos numeros nos dois lugares).
    Tudo fica dentro desta caixa: nenhuma funcao do painel e trocada.
    Corrigiu uma conta no App de Entrega? Copie aqui tambem. */
 var rvEntPainel=(function(){
@@ -7669,7 +7669,7 @@ function _mesPadrao(){
   return MONTHS.indexOf(m)>=0?m:MONTHS[MONTHS.length-1];
 }
 var me = null, curMonth = _mesPadrao();
-var S = {entregas:[],motoristas:[],abastecimentos:[],ajudantes:[],gestoresDir:[],bonusConfig:{porEntrega:5,custoKm:1.2,perfBonus:50,perfTaxaMin:97,meta:40,metaBonus:100,minPartic:50}};
+var S = {entregas:[],motoristas:[],abastecimentos:[],ajudantes:[],gestoresDir:[],conferentes:[],bonusConfig:{porEntrega:5,custoKm:1.2,perfBonus:50,perfTaxaMin:97,meta:40,metaBonus:100,minPartic:50}};
 var _all={entregas:[],abastecimento:[],vendasEntrega:[]};
 function portaParaEntrega(r){
   var oc=null;
@@ -7696,9 +7696,12 @@ function portaParaAbast(r){
     motoristaId:r.motorista||'',motoristaNome:r.motorista||''};
 }
 function brl(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function osBaseEnt(s){return String(s||'').replace(/\/\d+$/,'').trim().toUpperCase();}
 function normDia(v){if(!v)return '';var t=String(v);if(/^\d{4}-\d{2}-\d{2}$/.test(t))return t;var d=new Date(t);if(isNaN(d.getTime()))return t;var m=d.getMonth()+1,dd=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(dd<10?'0':'')+dd;}
+function diaBR(v){var t=normDia(v);var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(t);return m?(m[3]+'/'+m[2]+'/'+m[1]):(t||'—');}
 function hojeISO(){var d=new Date();var m=d.getMonth()+1,dd=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(dd<10?'0':'')+dd;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function kmDist(e){return(e.kmSaida&&e.kmChegada&&e.kmChegada>e.kmSaida)?e.kmChegada-e.kmSaida:0;}
 function _epFinalizada(e){return e&&(e.status==='entregue'||e.status==='ocorrencia');}
 function rvEntregaPct(){
   var es=S.entregas||[];
@@ -7722,7 +7725,8 @@ function rvEntregaPct(){
   return {mes:mes,dia:dia};
 }
 var CFG_ID='CFG_ENTREGA';
-var RESP_LABELS={equipe:'Equipe de entrega',separacao:'Separação / loja',fornecedor:'Fornecedor',cliente:'Cliente'};
+var RESP_LABELS={equipe:'Equipe de entrega',separacao:'Separação / loja',conferencia:'Conferência da carga',venda:'Venda / nota errada',fornecedor:'Fornecedor',cliente:'Cliente'};
+var MOTIVO_LABELS={esqueceu:'Esqueceu na loja',fabrica:'Aguardando fábrica',quebrou:'Quebrou',avariado:'Avariado',errado:'Produto errado / trocado'};
 function respEfetivoItem(it){return it.respAdmin||it.responsavel||'';}
 function extDe(e){
   if(!e.ext||typeof e.ext!=='object')e.ext={};
@@ -7742,6 +7746,7 @@ function strParaExt(s){
   var t=String(s);if(t.charAt(0)!=='{')return null;
   try{return JSON.parse(t);}catch(err){return null;}
 }
+function ehReentrega(e){return extDe(e).seq>1;}
 function ehRetirada(e){return !!(e.ocorrencia&&String(e.ocorrencia.resultado||'').indexOf('Retirada')>=0);}
 var RV_PAL=['#009389','#EA580C','#2563EB','#A21CAF','#65A30D','#9333EA'];
 var RV_COR_OK='#17795E', RV_COR_AT='#A04F00', RV_COR_RUIM='#B4271F';
@@ -7903,6 +7908,80 @@ function rvGDias(itens,o){
   if(media>0)notas+='<div class="av-nota"><span class="av-tracinho"></span> média dos dias com movimento: <b>'+_pl(Math.round(media*10)/10,(o.unidade1||'entrega'),(o.unidade||'entregas'))+'</b></div>';
   if(vaz)notas+='<div class="av-nota">'+(vaz===1?'1 dia útil':(vaz+' dias úteis'))+' sem nenhuma '+(o.coisa||'entrega')+' no mês. Domingo aparece sombreado e não entra nessa conta.</div>';
   return '<div class="av-rolax">'+s+'</div>'+notas;
+}
+function _ehErroCarga(it){return it&&(it.motivo==='errado'||it.motivo==='esqueceu');}
+function entConferencia(es){
+  var r={saidas:0,conferidas:0,porConf:{},erroCarga:0,descCliente:0,descEquipe:0,porMotivo:{},recebidas:0,clienteConferiu:0,
+         reentregas:0,osExtra:{},custoExtra:0,kmExtra:0,os:{}};
+  (es||[]).forEach(function(e){
+    if(!e||String(e.id)===CFG_ID)return;
+    var x=extDe(e);
+    if(e.os)r.os[osBaseEnt(e.os)]=1;
+    if(e.horaSaida){
+      r.saidas++;
+      if(x.conf&&x.conf.quem){r.conferidas++;var q=x.conf.quem;if(!r.porConf[q])r.porConf[q]={n:0,erros:0};r.porConf[q].n++;}
+    }
+    if(_entFin(e)&&!ehRetirada(e)){r.recebidas++;if(x.receb&&x.receb.conferiu)r.clienteConferiu++;}
+    var errou=false;
+    (x.pendencia.itens||[]).forEach(function(it){
+      var m=MOTIVO_LABELS[it.motivo]||'Sem motivo';
+      r.porMotivo[m]=(r.porMotivo[m]||0)+1;
+      if(it.recl)r.descCliente++;else r.descEquipe++;
+      if(_ehErroCarga(it)){r.erroCarga++;errou=true;}
+    });
+    if(errou&&x.conf&&x.conf.quem&&r.porConf[x.conf.quem])r.porConf[x.conf.quem].erros++;
+    if(ehReentrega(e)){r.reentregas++;if(e.os)r.osExtra[osBaseEnt(e.os)]=1;r.custoExtra+=Number(x.custoViagem)||0;r.kmExtra+=kmDist(e);}
+  });
+  r.nOS=Object.keys(r.os).length;r.nOSExtra=Object.keys(r.osExtra).length;
+  return r;
+}
+function entKmSemRegistro(es,tol){
+  tol=(tol===undefined)?5:tol;
+  var v=(es||[]).filter(function(e){return e&&e.horaSaida&&Number(e.kmSaida)>0&&Number(e.kmChegada)>0;})
+    .slice().sort(function(a,b){return Number(a.horaSaida)-Number(b.horaSaida);});
+  var r={total:0,buracos:[],viagens:v.length};
+  for(var i=1;i<v.length;i++){
+    var g=Number(v[i].kmSaida)-Number(v[i-1].kmChegada);
+    if(g>tol){r.total+=g;r.buracos.push({km:g,de:v[i-1],para:v[i]});}
+  }
+  r.buracos.sort(function(a,b){return b.km-a.km;});
+  return r;
+}
+function _avConferencia(es){
+  var c=entConferencia(es), k=entKmSemRegistro(es);
+  if(!c.saidas&&!c.recebidas&&!c.reentregas&&!c.descCliente)
+    return '<div class="av-card"><div class="av-tit">Conferência da carga e retrabalho</div><div class="av-vazio">Nenhuma saída registrada neste mês.</div></div>';
+  var pctConf=c.saidas?Math.round(c.conferidas/c.saidas*100):null;
+  var pctCli=c.recebidas?Math.round(c.clienteConferiu/c.recebidas*100):null;
+  var f=[];
+  f.push(['Cargas conferidas',pctConf===null?'—':(pctConf+'%'),c.saidas?(c.conferidas+' de '+_pl(c.saidas,'saída','saídas')):'nenhuma saída']);
+  f.push(['Erros de carga',String(c.erroCarga),c.erroCarga?'produto errado ou faltando':'nenhum produto errado ou faltando']);
+  f.push(['Descobertos pelo cliente',String(c.descCliente),(c.descCliente+c.descEquipe)?(c.descEquipe+' registrados pela equipe na hora'):'nenhuma ocorrência com item']);
+  f.push(['O.S. com viagem extra',c.nOS?(c.nOSExtra+' de '+c.nOS):'—',c.reentregas?(_pl(c.reentregas,'viagem a mais','viagens a mais')+(c.kmExtra?(' · '+_dec(c.kmExtra)+' km'):'')+(c.custoExtra?(' · '+brl(c.custoExtra)):'')):'nenhum retrabalho']);
+  f.push(['Cliente conferiu na hora',pctCli===null?'—':(pctCli+'%'),c.recebidas?(c.clienteConferiu+' de '+_pl(c.recebidas,'entrega','entregas')):'nenhuma entrega finalizada']);
+  f.push(['Km fora de viagem',k.viagens>1?(_dec(k.total)+' km'):'—',k.viagens>1?(k.buracos.length?_pl(k.buracos.length,'buraco no hodômetro','buracos no hodômetro'):'tudo bate de uma viagem para a outra'):'precisa de 2 viagens com km']);
+  var h='<div class="av-card"><div class="av-tit">Conferência da carga e retrabalho</div>'+
+    '<div class="av-sub2">Erro de carga não depende mais de alguém contar: a carga sai conferida, o cliente confere na hora, a reclamação vira registro e o km mostra viagem que não foi lançada.</div>'+
+    '<div class="ent-fichas">'+f.map(function(x){return '<div class="ent-ficha"><div class="ent-ficha-l">'+_gEsc(x[0])+'</div><div class="ent-ficha-v">'+x[1]+'</div><div class="ent-ficha-s">'+_gEsc(x[2])+'</div></div>';}).join('')+'</div>';
+  var nomes=Object.keys(c.porConf);
+  if(nomes.length){
+    rvCorFixar(nomes);
+    h+='<div class="av-sub2" style="margin-top:14px"><b>Por conferente</b> — cargas conferidas e quantas tiveram produto errado ou faltando</div>'+
+      rvGBarraH(nomes.map(function(n){var p=c.porConf[n];return {nome:n,valor:p.n,sub:(p.erros?(_pl(p.erros,'carga com erro','cargas com erro')+' · acerto de '+Math.round((p.n-p.erros)/p.n*100)+'%'):'nenhuma carga com erro')};})
+        .sort(function(a,b){return b.valor-a.valor;}),{curto:true,unidade:'cargas',unidade1:'carga',vazio:'Sem dado.'});
+  }
+  var mot=Object.keys(c.porMotivo);
+  if(mot.length){
+    rvCorFixar(mot);
+    h+='<div class="av-sub2" style="margin-top:14px"><b>O que deu errado</b> — itens com problema no mês</div>'+
+      rvGBarraH(mot.map(function(m){return {nome:m,valor:c.porMotivo[m]};}).sort(function(a,b){return b.valor-a.valor;}),{curto:true,unidade:'itens',unidade1:'item',vazio:'Sem dado.'});
+  }
+  if(k.buracos.length){
+    h+='<div class="av-nota"><b>Atenção ao hodômetro:</b> '+k.buracos.slice(0,3).map(function(b){
+      return _dec(b.km)+' km entre '+_gEsc(b.de.cliente||'?')+' ('+diaBR(normDia(new Date(Number(b.de.horaChegada||b.de.horaSaida)).toISOString()))+') e '+_gEsc(b.para.cliente||'?');
+    }).join('; ')+'. O caminhão rodou sem viagem lançada no app.</div>';
+  }
+  return h+'</div>';
 }
 function _vendaDaEntrega(e){
   if(!e||!e.os)return null;
@@ -8160,6 +8239,9 @@ function renderAVistaEnt(){
       sub:(pctFoto===null?'nenhuma entrega finalizada ainda neste mês':
         ((fin.length-semFoto)+' de '+fin.length+' finalizadas com foto'+(semFoto?('<br><span class="av-mudo">'+semFoto+' sem foto — a regra da loja não deixa fechar sem</span>'):'')))})+'</div>';
   h+='</div>';
+
+  /* 1a) v65: conferencia da carga e retrabalho */
+  h+=_avConferencia(es);
 
   /* 1b) o prazo que o cliente sente: da venda ate a entrega (v61) */
   var pc=entPrazoCliente(es), p1=entPrimeiraTentativa(es), cv=entCustoViagem(es);
