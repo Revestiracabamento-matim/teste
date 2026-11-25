@@ -496,6 +496,19 @@ i.ic-dot-vermelho{width:.62em;height:.62em;border-radius:50%;vertical-align:.04e
 i.ic-dot-azul{width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;background-color:#2E6FB0;-webkit-mask-image:none;mask-image:none}
 .btn i[class^="ic-"],.btn-login i[class^="ic-"],.tab-btn i[class^="ic-"],.sub-tab i[class^="ic-"],.alert i[class^="ic-"],.badge i[class^="ic-"],.farol i[class^="ic-"]{color:inherit}
 .btn i.ic-dot-verde,.btn i.ic-dot-vermelho{color:inherit}
+/* v67 — login: olhinho de senha, esqueci senha e "nao e voce?" (mesmo padrao do app de entrega) */
+i.ic-olho{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E")}
+i.ic-olho-fechado{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.73 5.08A10.43 10.43 0 0 1 12 5c4.18 0 7.94 2.54 9.94 6.65a1 1 0 0 1 0 .7 10.8 10.8 0 0 1-1.44 2.49M14.08 14.16a3 3 0 0 1-4.24-4.24M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.8 10.8 0 0 1 4.45-5.14M2 2l20 20'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.73 5.08A10.43 10.43 0 0 1 12 5c4.18 0 7.94 2.54 9.94 6.65a1 1 0 0 1 0 .7 10.8 10.8 0 0 1-1.44 2.49M14.08 14.16a3 3 0 0 1-4.24-4.24M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.8 10.8 0 0 1 4.45-5.14M2 2l20 20'/%3E%3C/svg%3E")}
+.pass-wrap{position:relative}
+.pass-wrap input{padding-right:44px!important}
+.pass-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;background:transparent;cursor:pointer;
+  padding:0;display:flex;align-items:center;justify-content:center;color:#5C5A55;font-size:18px}
+.pass-eye:active{color:#00635F}
+.login-esqueci{text-align:right;margin-top:6px}
+.login-esqueci a{font-size:12px;color:#00635F;text-decoration:none;font-weight:600}
+.confirma-user{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px}
+.confirma-avatar{width:56px;height:56px;border-radius:50%;background:#00635F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700}
+.confirma-nome{font-size:16px;font-weight:700;color:#141413;text-align:center}
 /* v66 — abas do vendedor numa linha so no celular (antes quebravam em 3 linhas) */
 .tabs-wrap{position:relative}
 .tabs-fade{position:absolute;right:0;top:0;bottom:2px;width:30px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;
@@ -587,9 +600,23 @@ i.ic-dot-azul{width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;ba
         <img id="loginLogoImg" src="" alt="Revestir — Construção e Acabamento" style="display:block;height:54px;width:auto;margin:0 auto">
       </div>
       <p class="login-sub">Dashboard de Vendas</p>
-      <div class="field"><label>Usuário</label><input id="u" type="text" autocomplete="off"></div>
-      <div class="field"><label>Senha</label><input id="p" type="password" autocomplete="off" onkeydown="if(event.key==='Enter')login()"></div>
-      <button class="btn-login" onclick="login()">Entrar</button>
+      <!-- v67: aparelho com login salvo pergunta antes de entrar -->
+      <div id="loginConfirma" class="hidden">
+        <div class="confirma-user">
+          <div class="confirma-avatar" id="confirmaAvatar"></div>
+          <div class="confirma-nome" id="confirmaNome"></div>
+        </div>
+        <button class="btn-login" onclick="continuarSessaoRestaurada()">Continuar</button>
+        <div class="login-esqueci" style="text-align:center;margin-top:12px"><a href="#" onclick="trocarUsuario();return false;">Não é você? Trocar de usuário</a></div>
+      </div>
+      <div id="loginCampos">
+        <div class="field"><label>Usuário</label><input id="u" type="text" autocomplete="off" autocapitalize="none"></div>
+        <div class="field"><label>Senha</label>
+          <div class="pass-wrap"><input id="p" type="password" autocomplete="off" onkeydown="if(event.key==='Enter')login()"><button type="button" class="pass-eye" onclick="rvOlho(this)" aria-label="Mostrar senha"><i class=ic-olho></i></button></div>
+          <div class="login-esqueci"><a href="#" onclick="esqueciSenha();return false;">Esqueci minha senha</a></div>
+        </div>
+        <button class="btn-login" onclick="login()">Entrar</button>
+      </div>
       <div id="loginErr" class="login-err"></div>
     </div>
   </div>
@@ -606,11 +633,11 @@ i.ic-dot-azul{width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;ba
     </div>
     <div class="field">
       <label>Nova senha</label>
-      <input id="trocaSenhaNova" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+      <div class="pass-wrap"><input id="trocaSenhaNova" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres"><button type="button" class="pass-eye" onclick="rvOlho(this)" aria-label="Mostrar senha"><i class=ic-olho></i></button></div>
     </div>
     <div class="field">
       <label>Confirmar nova senha</label>
-      <input id="trocaSenhaConf" type="password" autocomplete="new-password" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')confirmarTrocaSenha()">
+      <div class="pass-wrap"><input id="trocaSenhaConf" type="password" autocomplete="new-password" placeholder="Repita a senha" onkeydown="if(event.key==='Enter')confirmarTrocaSenha()"><button type="button" class="pass-eye" onclick="rvOlho(this)" aria-label="Mostrar senha"><i class=ic-olho></i></button></div>
     </div>
     <div id="trocaSenhaErr" style="color:#EF4444;font-size:12px;min-height:16px;margin-bottom:8px"></div>
     <div style="display:flex;gap:12px;justify-content:flex-end">
@@ -672,7 +699,7 @@ i.ic-dot-azul{width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;ba
   </div>
 
   <!-- TABS VENDEDOR -->
-  <div class="rv-selo">PAINEL v66</div>
+  <div class="rv-selo">PAINEL v67</div>
   <div class="tabs-wrap">
   <div class="tabs hidden" id="vendTabs">
     <button class="tab-btn active" onclick="tab(this,'vt-meumes')"><i class=ic-grafico></i> Meu Mês</button>
@@ -1036,7 +1063,7 @@ i.ic-dot-azul{width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;ba
         <div class="field"><label>Usuário (login)</label><input id="vUser" type="text" placeholder="ex: gisely"></div>
       </div>
       <div class="form-row">
-        <div class="field"><label>Senha provisória</label><input id="vSenha" type="password" placeholder="ela troca no 1º acesso"></div>
+        <div class="field"><label>Senha provisória</label><div class="pass-wrap"><input id="vSenha" type="password" placeholder="ela troca no 1º acesso"><button type="button" class="pass-eye" onclick="rvOlho(this)" aria-label="Mostrar senha"><i class=ic-olho></i></button></div></div>
         <div class="field"><label>Papel</label><select id="vPapel"><option value="vendedor">Vendedor</option><option value="entrega">Entrega</option><option value="admin">Admin</option></select></div>
       </div>
       <div class="form-row">
@@ -2178,6 +2205,68 @@ let G={
 let S={meta:400000,vendas:[],orcamentos:[],posvenda:{},pedidos:[],indicacoes:[],rtpagtos:[],bonificacoes:[]};
 
 // ===== AUTH — NUVEM =====
+// ===== v67 — sessao lembrada no aparelho + olhinho + esqueci senha =====
+var SESSAO_KEY='rvSessaoVendas';
+function rvOlho(btn){
+  var inp=btn&&btn.parentNode?btn.parentNode.querySelector('input'):null;
+  if(!inp)return;
+  var mostrar=inp.type==='password';
+  inp.type=mostrar?'text':'password';
+  btn.innerHTML=mostrar?'<i class=ic-olho-fechado></i>':'<i class=ic-olho></i>';
+  btn.setAttribute('aria-label',mostrar?'Ocultar senha':'Mostrar senha');
+}
+function esqueciSenha(){
+  alert('Para redefinir sua senha, peça para o administrador fazer isso em:\nEquipe > Usuários e acessos.\n\nVocê vai receber uma senha provisória e vai criar uma nova senha no próximo acesso.');
+}
+function salvarSessaoLocal(){
+  try{if(_token&&me)localStorage.setItem(SESSAO_KEY,JSON.stringify({token:_token,me:me}));}catch(e){}
+}
+function limparSessaoLocal(){
+  try{localStorage.removeItem(SESSAO_KEY);}catch(e){}
+}
+function restaurarSessaoLocal(){
+  try{
+    var raw=localStorage.getItem(SESSAO_KEY);
+    if(!raw)return false;
+    var s=JSON.parse(raw);
+    if(!s||!s.token||!s.me)return false;
+    _token=s.token;me=s.me;
+    return true;
+  }catch(e){return false;}
+}
+function iniciaisNome(nome){
+  var partes=(nome||'').trim().split(/\s+/);
+  if(!partes.length||!partes[0])return '?';
+  var ini=partes[0].charAt(0);
+  if(partes.length>1)ini+=partes[partes.length-1].charAt(0);
+  return ini.toUpperCase();
+}
+function rvLoginModo(confirma){
+  var lc=document.getElementById('loginConfirma'),lf=document.getElementById('loginCampos');
+  if(lc)lc.classList.toggle('hidden',!confirma);
+  if(lf)lf.classList.toggle('hidden',!!confirma);
+}
+function mostrarConfirmSessao(){
+  var nome=(me&&(me.name||me.user))||'';
+  var nn=document.getElementById('confirmaNome');if(nn)nn.textContent=nome;
+  var av=document.getElementById('confirmaAvatar');if(av)av.textContent=iniciaisNome(nome);
+  rvLoginModo(true);
+}
+function continuarSessaoRestaurada(){
+  document.getElementById('loginErr').textContent='';
+  buscarTodosOsDados();
+}
+function trocarUsuario(){
+  limparSessaoLocal();me=null;_token=null;
+  rvLoginModo(false);
+  document.getElementById('loginErr').textContent='';
+  var u=document.getElementById('u');if(u){u.value='';u.focus();}
+  var p=document.getElementById('p');if(p)p.value='';
+}
+window.addEventListener('load',function(){
+  if(restaurarSessaoLocal())mostrarConfirmSessao();
+});
+
 function login(){
   const u=document.getElementById('u').value.trim().toLowerCase();
   const p=document.getElementById('p').value;
@@ -2270,7 +2359,9 @@ function buscarTodosOsDados(){
     function(res){
       mostrarLoading(false);
       if(!res.ok){
-        document.getElementById('loginErr').textContent=res.erro||'Erro ao carregar dados.';
+        var _veioDaSessao=!!localStorage.getItem(SESSAO_KEY);
+        limparSessaoLocal();rvLoginModo(false);
+        document.getElementById('loginErr').textContent=_veioDaSessao?'Sua sessão expirou. Faça login novamente.':(res.erro||'Erro ao carregar dados.');
         me=null;_token=null;
         document.getElementById('loginScreen').classList.remove('hidden');
         return;
@@ -2289,6 +2380,8 @@ function buscarTodosOsDados(){
       document.getElementById('loginErr').textContent='Falha ao carregar dados. Verifique sua conexão.';
       me=null;_token=null;
       document.getElementById('loginScreen').classList.remove('hidden');
+      // sem internet nao apaga o login salvo: "Continuar" tenta de novo
+      if(restaurarSessaoLocal())mostrarConfirmSessao();
     }
   );
 }
@@ -2306,6 +2399,7 @@ function mostrarLoading(sim){
 }
 
 function entrarNoApp(){
+  salvarSessaoLocal();
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('hUser').textContent=me.name;
@@ -2365,6 +2459,7 @@ function logout(){
   // v40: com gravacao pendente, nao sai (senao perde o que ainda esta indo para a nuvem)
   if(_filaAtiva||_fila.length){alert('Ainda estou salvando na nuvem. Espere a faixa verde "Tudo salvo" e clique em Sair de novo.');return;}
   if(_filaRetry.length&&!confirm('Há registros que NÃO foram salvos na nuvem (faixa vermelha). Se sair agora, eles se perdem. Sair mesmo assim?'))return;
+  limparSessaoLocal();
   me=null;_token=null;_allData=null;_allGlobal=null;_snapS=null;_snapG=null;
   _fila=[];_filaRetry=[];_filaAtiva=false;_avisouVendedor=false;
   if(window._refV){clearInterval(window._refV);window._refV=null;}
